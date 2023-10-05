@@ -1,0 +1,24 @@
+[package]
+name = "bitwark"
+version = "0.1.0"
+authors = ["Ivan Ermolaev <ermolaevym@gmail.com>"]
+edition = "2021"
+license = "MIT"
+readme = "README.md"
+description = "Empowering secure digital interactions with robust binary token management and dynamic rolling keys"
+homepage = "https://github.com/Nawy/bitwark"
+repository = "https://github.com/Nawy/bitwark"
+keywords = ["jwt", "auth", "token", "quic", "security"]
+categories = ["cryptography", "network"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0.175", features = ["derive"] }
+ed25519-dalek = { version = "2.0.0", features = ["rand_core", "pkcs8"] }
+bincode = "1.3.3"
+rand = "0.8.5"
+sha3 = "0.10.8"
+thiserror = "1.0.44"
+chrono = "0.4.31"
+
