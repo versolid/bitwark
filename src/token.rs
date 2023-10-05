@@ -9,19 +9,24 @@ use sha3::{Digest, Sha3_384};
 
 use crate::error::BwError;
 use crate::keys::CryptoKey;
+use crate::message::SignedMsg;
 
 const EXP_BYTES_LENGTH: usize = 8;
 const MIN_MSG_SIZE: usize = 16;
 const MIN_TOKEN_LENGTH: usize = SIGNATURE_LENGTH + EXP_BYTES_LENGTH + MIN_MSG_SIZE;
 
-#[derive(Debug)]
-pub struct BwToken<T: Serialize + DeserializeOwned, H: Digest> {
+#[derive(Serialize, Deserialize)]
+pub struct ExpiringBlock<T: Serialize+DeserializeOwned> {
     exp: i64,
     payload: T,
-    digest: PhantomData<H>,
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> BwToken<T, H> {
+#[derive(Debug)]
+pub struct ExpiringToken<T: Serialize + DeserializeOwned, H: Digest> {
+    signed_bytes: SignedMsg<ExpiringBlock<T>, H>
+}
+
+impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringToken<ExpiringBlock<T>, H> {
     #[inline]
     fn new(exp_in_seconds: i64, payload: T) -> Self {
         let expiration = Utc::now()
@@ -29,10 +34,13 @@ impl<T: Serialize + DeserializeOwned, H: Digest> BwToken<T, H> {
             .expect("valid timestamp")
             .timestamp();
 
-        BwToken {
-            exp: expiration,
-            payload,
-            digest: PhantomData::<H>::default(),
+        ExpiringToken {
+            signed_bytes: SignedMsg::<ExpiringBlock<T>, H>::new(
+                ExpiringBlock {
+                    exp: expiration,
+                    payload,
+                }
+            )
         }
     }
 
@@ -77,7 +85,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> BwToken<T, H> {
         let payload =
             bincode::deserialize(payload_bytes).map_err(|_| BwError::InvalidTokenFormat)?;
 
-        Ok(BwToken {
+        Ok(ExpiringToken {
             exp,
             payload,
             digest: PhantomData::<H>::default(),
@@ -142,7 +150,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> BwToken<T, H> {
         let payload =
             bincode::deserialize(payload_bytes).map_err(|_| BwError::InvalidTokenFormat)?;
 
-        Ok(BwToken {
+        Ok(ExpiringToken {
             exp,
             payload,
             digest: PhantomData::<H>::default(),
@@ -156,23 +164,23 @@ impl BwTokenDefault {
     fn new<T: Serialize + DeserializeOwned>(
         exp_in_seconds: i64,
         payload: T,
-    ) -> BwToken<T, Sha3_384> {
-        BwToken::<T, Sha3_384>::new(exp_in_seconds, payload)
+    ) -> ExpiringToken<T, Sha3_384> {
+        ExpiringToken::<T, Sha3_384>::new(exp_in_seconds, payload)
     }
 
     fn decode<T: Serialize + DeserializeOwned>(
         bytes: &[u8],
         key: &dyn CryptoKey,
-    ) -> Result<BwToken<T, Sha3_384>, BwError> {
-        BwToken::<T, Sha3_384>::decode_with_hasher(bytes, key)
+    ) -> Result<ExpiringToken<T, Sha3_384>, BwError> {
+        ExpiringToken::<T, Sha3_384>::decode_with_hasher(bytes, key)
     }
 
     fn decode_salted<T: Serialize + DeserializeOwned>(
         bytes: &[u8],
         salt: &[u8],
         key: &dyn CryptoKey,
-    ) -> Result<BwToken<T, Sha3_384>, BwError> {
-        BwToken::<T, Sha3_384>::decode_salted_with_hasher(bytes, salt, key)
+    ) -> Result<ExpiringToken<T, Sha3_384>, BwError> {
+        ExpiringToken::<T, Sha3_384>::decode_salted_with_hasher(bytes, salt, key)
     }
 }
 
