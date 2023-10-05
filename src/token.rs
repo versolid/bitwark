@@ -1,118 +1,59 @@
-use std::hash::Hasher;
-use std::marker::PhantomData;
-
 use chrono::{Duration, Utc};
-use ed25519_dalek::SIGNATURE_LENGTH;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_384};
+use std::ops::Deref;
 
 use crate::error::BwError;
 use crate::keys::CryptoKey;
-use crate::message::SignedMsg;
-
-const EXP_BYTES_LENGTH: usize = 8;
-const MIN_MSG_SIZE: usize = 16;
-const MIN_TOKEN_LENGTH: usize = SIGNATURE_LENGTH + EXP_BYTES_LENGTH + MIN_MSG_SIZE;
+use crate::message::SignedPayload;
 
 #[derive(Serialize, Deserialize)]
-pub struct ExpiringBlock<T: Serialize+DeserializeOwned> {
+pub struct ExpiringBlock<T> {
     exp: i64,
     payload: T,
 }
 
-#[derive(Debug)]
 pub struct ExpiringToken<T: Serialize + DeserializeOwned, H: Digest> {
-    signed_bytes: SignedMsg<ExpiringBlock<T>, H>
+    signed_payload: SignedPayload<ExpiringBlock<T>, H>,
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringToken<ExpiringBlock<T>, H> {
+impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringToken<T, H> {
     #[inline]
-    fn new(exp_in_seconds: i64, payload: T) -> Self {
+    pub fn new(exp_in_seconds: i64, payload: T) -> Self {
         let expiration = Utc::now()
             .checked_add_signed(Duration::seconds(exp_in_seconds))
             .expect("valid timestamp")
             .timestamp();
 
+        let block = ExpiringBlock {
+            exp: expiration,
+            payload,
+        };
         ExpiringToken {
-            signed_bytes: SignedMsg::<ExpiringBlock<T>, H>::new(
-                ExpiringBlock {
-                    exp: expiration,
-                    payload,
-                }
-            )
+            signed_payload: SignedPayload::<ExpiringBlock<T>, H>::new(block),
         }
     }
 
-    fn encode(&self, key: &dyn CryptoKey) -> Result<Vec<u8>, BwError> {
-        let payload_bytes = bincode::serialize(&self.payload).expect("Serialization failed");
-        let exp_bytes = self.exp.to_le_bytes().to_vec();
-
-        let mut to_sign = exp_bytes;
-        to_sign.extend(&payload_bytes);
-
-        let signature = key.sign(&to_sign)?;
-
-        let mut encoded = signature;
-        encoded.extend(to_sign);
-
-        Ok(encoded)
+    #[inline(always)]
+    pub fn encode(&self, key: &dyn CryptoKey) -> Result<Vec<u8>, BwError> {
+        self.signed_payload.encode(key)
     }
 
-    fn decode_with_hasher(bytes: &[u8], key: &dyn CryptoKey) -> Result<Self, BwError> {
-        if bytes.len() < MIN_TOKEN_LENGTH {
-            return Err(BwError::InvalidTokenFormat);
-        }
-
-        let (signature, body) = bytes.split_at(SIGNATURE_LENGTH);
-        let (exp_bytes, payload_bytes) = body.split_at(EXP_BYTES_LENGTH);
-
-        // Verify signature
-        key
-            .verify(body, signature)
-            .map_err(|_| BwError::InvalidSignature)?;
-
-        let exp = i64::from_le_bytes(
-            <[u8; EXP_BYTES_LENGTH]>::try_from(exp_bytes)
-                .map_err(|_| BwError::InvalidTokenFormat)?,
-        );
-
+    #[inline(always)]
+    pub fn decode_with_hasher(bytes: &[u8], key: &dyn CryptoKey) -> Result<Self, BwError> {
+        let signed_payload = SignedPayload::<ExpiringBlock<T>, H>::decode_with_hasher(bytes, key)?;
         // Verify expiration
-        if Utc::now().timestamp() > exp {
+        if Utc::now().timestamp() > signed_payload.exp {
             return Err(BwError::Expired);
         }
 
-        let payload =
-            bincode::deserialize(payload_bytes).map_err(|_| BwError::InvalidTokenFormat)?;
-
-        Ok(ExpiringToken {
-            exp,
-            payload,
-            digest: PhantomData::<H>::default(),
-        })
+        Ok(ExpiringToken { signed_payload })
     }
 
-    pub fn encode_with_salt(
-        &self,
-        salt: &[u8],
-        key: &dyn CryptoKey,
-    ) -> Result<Vec<u8>, BwError> {
-        let payload_bytes = bincode::serialize(&self.payload).expect("Serialization failed");
-        let exp_bytes = self.exp.to_le_bytes().to_vec();
-
-        let mut body = exp_bytes;
-        body.extend(&payload_bytes);
-
-        let mut salted_body = body.clone();
-        salted_body.extend(salt);
-
-        let hashed_to_sign = hash::<H>(&salted_body);
-        let signature = key.sign(&hashed_to_sign)?;
-
-        let mut encoded = signature;
-        encoded.extend(body);
-
-        Ok(encoded)
+    #[inline(always)]
+    pub fn encode_with_salt(&self, salt: &[u8], key: &dyn CryptoKey) -> Result<Vec<u8>, BwError> {
+        self.signed_payload.encode_salted(salt, key)
     }
 
     pub fn decode_salted_with_hasher(
@@ -120,41 +61,22 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringToken<ExpiringBlock<T>,
         salt: &[u8],
         key: &dyn CryptoKey,
     ) -> Result<Self, BwError> {
-        if bytes.len() < MIN_TOKEN_LENGTH {
-            return Err(BwError::InvalidTokenFormat);
-        }
+        let signed_payload =
+            SignedPayload::<ExpiringBlock<T>, H>::decode_salted_with_hasher(bytes, salt, key)?;
 
-        let (signature, body) = bytes.split_at(SIGNATURE_LENGTH);
-        let (exp_bytes, payload_bytes) = body.split_at(EXP_BYTES_LENGTH);
-
-        let mut to_verify = Vec::with_capacity(body.len() + salt.len());
-        to_verify.extend_from_slice(body);
-        to_verify.extend_from_slice(salt);
-        let hashed_to_verify = hash::<H>(&to_verify);
-
-        // Verify signature
-        key
-            .verify(&hashed_to_verify, signature)
-            .map_err(|_| BwError::InvalidSignature)?;
-
-        let exp = i64::from_le_bytes(
-            <[u8; EXP_BYTES_LENGTH]>::try_from(exp_bytes)
-                .map_err(|_| BwError::InvalidTokenFormat)?,
-        );
-
-        // Verify expiration
-        if Utc::now().timestamp() > exp {
+        if Utc::now().timestamp() > signed_payload.exp {
             return Err(BwError::Expired);
         }
 
-        let payload =
-            bincode::deserialize(payload_bytes).map_err(|_| BwError::InvalidTokenFormat)?;
+        Ok(ExpiringToken { signed_payload })
+    }
+}
 
-        Ok(ExpiringToken {
-            exp,
-            payload,
-            digest: PhantomData::<H>::default(),
-        })
+impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringToken<T, H> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &(*self.signed_payload).payload
     }
 }
 
@@ -184,7 +106,6 @@ impl BwTokenDefault {
     }
 }
 
-
 // Tests --------------------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -204,7 +125,8 @@ mod tests {
         let decoded = BwTokenDefault::decode::<String>(&encoded, &ed_key);
 
         assert!(decoded.is_ok());
-        assert_eq!(decoded.unwrap().payload, "This is payload".to_string());
+        let decoded = decoded.unwrap();
+        assert_eq!(*decoded, "This is payload".to_string());
     }
 
     #[test]
@@ -249,7 +171,8 @@ mod tests {
         let decoded = BwTokenDefault::decode_salted::<String>(&encoded, salt.as_slice(), &ed_key);
 
         assert!(decoded.is_ok());
-        assert_eq!(decoded.unwrap().payload, "This is payload".to_string());
+        let decoded = decoded.unwrap();
+        assert_eq!(*decoded, "This is payload".to_string());
     }
 
     #[test]
