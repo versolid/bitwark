@@ -9,7 +9,7 @@ description = "Empowering secure digital interactions with robust binary token m
 homepage = "https://github.com/versolid/bitwark"
 repository = "https://github.com/versolid/bitwark"
 keywords = ["jwt", "auth", "token", "quic", "security"]
-categories = ["cryptography", "network"]
+categories = ["cryptography", "authentication"]
 
 exclude = [
     ".idea/*",
