@@ -1,7 +1,6 @@
 use crate::error::BwError;
 
 pub mod ed;
-pub mod expiring;
 
 pub trait CryptoKey {
     fn sign(&self, bytes: &[u8]) -> Result<Vec<u8>, BwError>;

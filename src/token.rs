@@ -6,19 +6,19 @@ use std::ops::Deref;
 
 use crate::error::BwError;
 use crate::keys::CryptoKey;
-use crate::message::SignedPayload;
+use crate::payload::SignedPayload;
 
 #[derive(Serialize, Deserialize)]
-pub struct ExpiringBlock<T> {
+struct ExpiringBlock<T> {
     exp: i64,
     payload: T,
 }
 
-pub struct ExpiringToken<T: Serialize + DeserializeOwned, H: Digest> {
+pub struct ExpiringSigned<T: Serialize + DeserializeOwned, H: Digest> {
     signed_payload: SignedPayload<ExpiringBlock<T>, H>,
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringToken<T, H> {
+impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
     #[inline]
     pub fn new(exp_in_seconds: i64, payload: T) -> Self {
         let expiration = Utc::now()
@@ -30,7 +30,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringToken<T, H> {
             exp: expiration,
             payload,
         };
-        ExpiringToken {
+        ExpiringSigned {
             signed_payload: SignedPayload::<ExpiringBlock<T>, H>::new(block),
         }
     }
@@ -48,7 +48,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringToken<T, H> {
             return Err(BwError::Expired);
         }
 
-        Ok(ExpiringToken { signed_payload })
+        Ok(ExpiringSigned { signed_payload })
     }
 
     #[inline(always)]
@@ -68,11 +68,11 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringToken<T, H> {
             return Err(BwError::Expired);
         }
 
-        Ok(ExpiringToken { signed_payload })
+        Ok(ExpiringSigned { signed_payload })
     }
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringToken<T, H> {
+impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringSigned<T, H> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -83,26 +83,29 @@ impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringToken<T, H> {
 pub struct ExpiredSignedDefault {}
 
 impl ExpiredSignedDefault {
-    fn new<T: Serialize + DeserializeOwned>(
+    #[inline(always)]
+    pub fn new<T: Serialize + DeserializeOwned>(
         exp_in_seconds: i64,
         payload: T,
-    ) -> ExpiringToken<T, Sha3_384> {
-        ExpiringToken::<T, Sha3_384>::new(exp_in_seconds, payload)
+    ) -> ExpiringSigned<T, Sha3_384> {
+        ExpiringSigned::<T, Sha3_384>::new(exp_in_seconds, payload)
     }
 
-    fn decode<T: Serialize + DeserializeOwned>(
+    #[inline(always)]
+    pub fn decode<T: Serialize + DeserializeOwned>(
         bytes: &[u8],
         key: &dyn CryptoKey,
-    ) -> Result<ExpiringToken<T, Sha3_384>, BwError> {
-        ExpiringToken::<T, Sha3_384>::decode_with_hasher(bytes, key)
+    ) -> Result<ExpiringSigned<T, Sha3_384>, BwError> {
+        ExpiringSigned::<T, Sha3_384>::decode_with_hasher(bytes, key)
     }
 
-    fn decode_salted<T: Serialize + DeserializeOwned>(
+    #[inline(always)]
+    pub fn decode_salted<T: Serialize + DeserializeOwned>(
         bytes: &[u8],
         salt: &[u8],
         key: &dyn CryptoKey,
-    ) -> Result<ExpiringToken<T, Sha3_384>, BwError> {
-        ExpiringToken::<T, Sha3_384>::decode_salted_with_hasher(bytes, salt, key)
+    ) -> Result<ExpiringSigned<T, Sha3_384>, BwError> {
+        ExpiringSigned::<T, Sha3_384>::decode_salted_with_hasher(bytes, salt, key)
     }
 }
 
@@ -111,7 +114,7 @@ impl ExpiredSignedDefault {
 #[cfg(test)]
 mod tests {
     use crate::keys::ed::EdKey;
-    use crate::keys::expiring::Expiring;
+    use crate::expiring::Expiring;
     use crate::keys::RollingKey;
     use crate::Generator;
 

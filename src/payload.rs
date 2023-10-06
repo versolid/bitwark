@@ -3,8 +3,8 @@ use crate::keys::CryptoKey;
 use ed25519_dalek::SIGNATURE_LENGTH;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use sha3::Digest;
 use std::marker::PhantomData;
+use sha3::{Digest, Sha3_384};
 use std::ops::Deref;
 
 const MIN_MSG_SIZE: usize = 16;
@@ -109,4 +109,32 @@ fn hash<H: Digest>(bytes: &[u8]) -> Vec<u8> {
     let mut hasher = H::new();
     hasher.update(&bytes);
     hasher.finalize().to_vec()
+}
+
+pub struct SignedPayloadDefault {}
+
+impl SignedPayloadDefault {
+    #[inline(always)]
+    pub fn new<T: Serialize + DeserializeOwned>(
+        payload: T,
+    ) -> SignedPayload<T, Sha3_384> {
+        SignedPayload::<T, Sha3_384>::new(payload)
+    }
+
+    #[inline(always)]
+    pub fn decode<T: Serialize + DeserializeOwned>(
+        bytes: &[u8],
+        key: &dyn CryptoKey,
+    ) -> Result<SignedPayload<T, Sha3_384>, BwError> {
+        SignedPayload::<T, Sha3_384>::decode_with_hasher(bytes, key)
+    }
+
+    #[inline(always)]
+    pub fn decode_salted<T: Serialize + DeserializeOwned>(
+        bytes: &[u8],
+        salt: &[u8],
+        key: &dyn CryptoKey,
+    ) -> Result<SignedPayload<T, Sha3_384>, BwError> {
+        SignedPayload::<T, Sha3_384>::decode_salted_with_hasher(bytes, salt, key)
+    }
 }

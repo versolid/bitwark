@@ -5,7 +5,9 @@ use chrono::Utc;
 use crate::error::BwError;
 use crate::keys::RollingKey;
 use crate::Generator;
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct Expiring<K: Generator> {
     init_exp: i64,
     exp: i64,
@@ -57,7 +59,7 @@ impl<K: Generator> Deref for Expiring<K> {
 #[cfg(test)]
 mod tests {
     use crate::keys::ed::EdKey;
-    use crate::keys::expiring::Expiring;
+    use crate::expiring::Expiring;
     use crate::keys::CryptoKey;
     use crate::keys::RollingKey;
 
