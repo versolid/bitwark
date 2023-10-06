@@ -17,14 +17,19 @@ pub struct Expiring<K: Generator> {
 impl<K: Generator> Expiring<K> {
     #[inline]
     pub fn generate(exp_sec: i64) -> Result<Self, BwError> {
+        Self::new(exp_sec, K::generate())
+    }
+
+    #[inline]
+    pub fn new(exp_sec: i64, object: K) -> Result<Self, BwError> {
         let expiration = Utc::now()
             .checked_add_signed(chrono::Duration::seconds(exp_sec))
-            .expect("valid timestamp")
+            .ok_or(|| BwError::IncorrectTimestamp)?
             .timestamp();
         Ok(Self {
-            init_exp: exp_sec,
+            init_exp,
             exp: expiration,
-            object: K::generate()?,
+            object
         })
     }
 
