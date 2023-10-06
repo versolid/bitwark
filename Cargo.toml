@@ -1,16 +1,19 @@
 [package]
 name = "bitwark"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Ivan Ermolaev <ermolaevym@gmail.com>"]
 edition = "2021"
 license = "MIT"
 readme = "README.md"
 description = "Empowering secure digital interactions with robust binary token management and dynamic rolling keys"
-homepage = "https://github.com/Nawy/bitwark"
-repository = "https://github.com/Nawy/bitwark"
+homepage = "https://github.com/versolid/bitwark"
+repository = "https://github.com/versolid/bitwark"
 keywords = ["jwt", "auth", "token", "quic", "security"]
 categories = ["cryptography", "network"]
 
+exclude = [
+    ".idea/*",
+]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
