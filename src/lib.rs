@@ -49,6 +49,55 @@
 //! let decoded_payload = SignedPayload::<String>::decode(&signed_payload_bytes, &key).unwrap();
 //! assert_eq!(*decoded_payload, *payload);
 //! ```
+//!
+//! ## Salting
+//! The `SaltN` struct can be utilized to generate random salts which are pivotal in
+//! cryptographic operations to safeguard against various forms of attack and to ensure
+//! that identical inputs do not produce identical outputs across different users or sessions.
+//!
+//! * `Salt64` - 64 bytes length
+//! * `Salt32`
+//! * `Salt16`
+//! * `Salt12`
+//!
+//! ```
+//! # use bitwark::salt::Salt64;
+//! # use bitwark::Generator;
+//!
+//! let salt1 = Salt64::generate().unwrap();
+//! let salt2 = Salt64::generate().unwrap();
+//!
+//! // Assert that different generated salts are not equal.
+//! // In cryptographic operations, unique salts are pivotal to secure storage and transmission.
+//! assert_ne!(*salt1, *salt2, "Salts should be unique across generations.");
+//! ```
+//!
+//! Salts can also be seamlessly integrated into rotation operations, frequently refreshing
+//! them to enhance security further. This is particularly valuable in contexts where the
+//! same data might be encrypted multiple times, ensuring each instance yields different ciphertext.
+//!
+//! Example with Rotation (Assuming `Expiring` is a structure which utilizes the `Rotation` trait):
+//!
+//! ```
+//! use bitwark::{salt::Salt64, exp::Expiring, Rotation, Generator};
+//! use chrono::Duration;
+//!
+//! // Generating a salt.
+//! let salt = Salt64::generate().unwrap();
+//!
+//! // Creating an expiring salt with a lifespan of 10 seconds.
+//! let mut expiring_salt = Expiring::<Salt64>::new(Duration::seconds(10), salt).unwrap();
+//!
+//! // Performing rotation when needed.
+//! if expiring_salt.is_expired() {
+//!     expiring_salt.rotate().expect("Salt rotation failed.");
+//! }
+//! ```
+//!
+//! Using salts and rotating them regularly strengthens security by ensuring
+//! that even repeated data or credentials produce different hashes or ciphertexts
+//! across different instances or sessions.
+//!
 use error::BwError;
 
 pub mod error;
