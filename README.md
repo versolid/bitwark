@@ -1,9 +1,22 @@
 # Bitwark
-> Empowering secure digital interactions with robust binary token management and dynamic rolling keys 
+> Empowering secure digital interactions with robust binary token management and dynamic rolling keys
 
-## At first Glance
-Bitwark provides functionality to perform security operations with binary security methods.
+Shield your digital applications with lightweight binary alternative to JWT tokens, seamlessly integrated key rotation, and convenient salt functionalities—all catered through the robust Rust library, Bitwark.
+
+## 🚀 Introduction
+The inception of Bitwark is inspired by the quest to amalgamate binary-level security and user-friendly API, ensuring your applications are fortified with a lightweight yet impenetrable cryptographic shield. Bitwark implements binary JWT tokens, providing a secure, efficient, and compact alternative to traditional JWTs, making it apt for constrained environments where every byte matters.
+
+### 🔐 Key Features:
+
+* Binary Signed Tokens: Compact and efficient representation of JWTs for resource-constrained environments.
+* Dynamic Key and Salt Rotation: Easily rotate keys and salts, ensuring your application adapts to the dynamic security landscape.
+* Lightweight: Minimal overhead, ensuring optimal performance even in high-throughput scenarios.
+
+## 🛠️ Getting Started
+Embark on a secure journey with Bitwark by leveraging the following functionality in your Rust applications:
 ```Rust
+use bitwark::{payload::SignedPayload, keys::ed::EdKey, keys::CryptoKey, Generator};
+
 // creating a key
 let key = EdKey::generate()?;
 
@@ -14,46 +27,29 @@ if expiring_key.is_expired() {
 }
 
 // Creating a payload
-let payload = SignedPayloadDefault::new("A signed message");
+let payload = SignedPayload::<String>::new("A signed message".to_string());
 
 // Encode the payload with signature based on the expiring key
 let signed_payload_bytes = payload.encode(&expiring_key)?;
 
 // Decode the signed payload with verifying signature with payload's integrity
-let decoded_payload = SignedPayloadDefault::decode(&signed_payload_bytes, &expiring_key)?;
-assert_eq!(decoded_payload, payload);
+let decoded_payload = SignedPayload::<String>::decode(&signed_payload_bytes, &expiring_key)?;
+assert_eq!(*decoded_payload, *payload);
 ```
 
-## Signed payload
-Implementing signig payload
-```Rust
-use bitwark::payload::SignedPayloadDefault;
+## 💡 Motivation
+In an era where data security is paramount, Bitwark aims to offer developers a toolbox for crafting secure digital interactions without compromising on performance or ease of use. Lightweight binary JWT tokens minimize bandwidth usage, while key rotation and salt functionalities amplify security, ensuring your applications are not just secure, but also efficient and reliable.
 
-let payload = SignedPayloadDefault::new("Any type of message payload");
+## 🌱 Contribution
+### Be a Part of Bitwark’s Journey!
+Contributors are the backbone of open-source projects, and Bitwark warmly welcomes everyone who’s eager to contribute to the realms of binary security!
 
-// Create a EdRSA key for signing
-let key = EdKey::generate().unwrap();
+#### 🎗 How to Contribute:
 
-// encode valued into signed bytes
-let signed_bytes: Vec<u8> = payload.encode(&key)?;
-if let Ok(decoded_payload) = SignedPayloadDefault::decode(&key) {
-   assert_eq!(*decoded_payload, *payload);
-}
+🧠 Propose Ideas: Share enhancement ideas or report bugs through Issues.
+🛠 Code Contributions: Submit a Pull Request with new features, enhancements, or bug fixes.
+📚 Improve Documentation: Help us make our documentation comprehensive and user-friendly.
+💬 Community Interaction: Join discussions and provide feedback to help make Bitwark better.
 
-```
-Implementing signing payload with struct
-```Rust
-use bitwark::payload::SignedPayloadDefault;
-use serde::{Serialize, Deserialize};
-
-#[derive(Serialize, Deserialize)]
-struct Data {
-   field_1: String,
-   value_1: i64
-}
-
-let payload = SignedPayloadDefault::new(Data { field_1: "Field".to_string(), value_1: 10});
-// ...
-```
-
-## Expiring
+## 📜 License
+Bitwark is open-source software, freely available under the MIT License.
