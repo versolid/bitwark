@@ -1,16 +1,16 @@
-use chrono::TimeZone;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 
 use crate::error::BwError;
 use crate::keys::CryptoKey;
+use crate::Generator;
 
 pub struct EdKey {
     signing_key: SigningKey,
     verifying_key: VerifyingKey,
 }
 
-impl CryptoKey for EdKey {
+impl Generator for EdKey {
     #[inline]
     fn generate() -> Result<Self, BwError> {
         let (verifying_key, signing_key) = generate_ed_keypair();
@@ -19,7 +19,9 @@ impl CryptoKey for EdKey {
             verifying_key,
         })
     }
+}
 
+impl CryptoKey for EdKey {
     #[inline]
     fn sign(&self, bytes: &[u8]) -> Result<Vec<u8>, BwError> {
         Ok(self.signing_key.sign(bytes).to_vec())
@@ -46,6 +48,7 @@ pub fn generate_ed_keypair() -> (VerifyingKey, SigningKey) {
 mod tests {
     use crate::keys::ed::EdKey;
     use crate::keys::CryptoKey;
+    use crate::Generator;
 
     #[test]
     fn test_generate() {

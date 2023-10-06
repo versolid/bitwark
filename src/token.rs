@@ -80,9 +80,9 @@ impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringToken<T, H> {
     }
 }
 
-pub struct BwTokenDefault {}
+pub struct ExpiredSignedDefault {}
 
-impl BwTokenDefault {
+impl ExpiredSignedDefault {
     fn new<T: Serialize + DeserializeOwned>(
         exp_in_seconds: i64,
         payload: T,
@@ -111,18 +111,19 @@ impl BwTokenDefault {
 #[cfg(test)]
 mod tests {
     use crate::keys::ed::EdKey;
-    use crate::keys::expiring::ExpiringKey;
+    use crate::keys::expiring::Expiring;
     use crate::keys::RollingKey;
+    use crate::Generator;
 
     use super::*;
 
     #[test]
     fn encode_decode_test() {
-        let token = BwTokenDefault::new(60, "This is payload".to_string());
+        let token = ExpiredSignedDefault::new(60, "This is payload".to_string());
         let ed_key = EdKey::generate().expect("Must generate a key");
 
         let encoded = token.encode(&ed_key).unwrap();
-        let decoded = BwTokenDefault::decode::<String>(&encoded, &ed_key);
+        let decoded = ExpiredSignedDefault::decode::<String>(&encoded, &ed_key);
 
         assert!(decoded.is_ok());
         let decoded = decoded.unwrap();
@@ -132,31 +133,31 @@ mod tests {
     #[test]
     fn decode_incorrect_token_test() {
         let ed_key = EdKey::generate().expect("Must generate a key");
-        let decoded = BwTokenDefault::decode::<String>(b"Something", &ed_key);
+        let decoded = ExpiredSignedDefault::decode::<String>(b"Something", &ed_key);
 
         assert!(matches!(decoded, Err(BwError::InvalidTokenFormat)));
     }
 
     #[test]
     fn decode_invalid_signature_token_test() {
-        let token = BwTokenDefault::new(60, "This is payload".to_string());
-        let mut ed_key = ExpiringKey::<EdKey>::generate(10).expect("Must create a token");
+        let token = ExpiredSignedDefault::new(60, "This is payload".to_string());
+        let mut ed_key = Expiring::<EdKey>::generate(10).expect("Must create a token");
 
         let encoded = token.encode(&*ed_key).unwrap();
         // change token
         ed_key.roll().unwrap();
-        let decoded = BwTokenDefault::decode::<String>(&encoded, &*ed_key);
+        let decoded = ExpiredSignedDefault::decode::<String>(&encoded, &*ed_key);
 
         assert!(matches!(decoded, Err(BwError::InvalidSignature)));
     }
 
     #[test]
     fn decode_expired_token_test() {
-        let token = BwTokenDefault::new(-60, "This is payload".to_string());
+        let token = ExpiredSignedDefault::new(-60, "This is payload".to_string());
         let ed_key = EdKey::generate().expect("Must generate a key");
 
         let encoded = token.encode(&ed_key).unwrap();
-        let decoded = BwTokenDefault::decode::<String>(&encoded, &ed_key);
+        let decoded = ExpiredSignedDefault::decode::<String>(&encoded, &ed_key);
 
         assert!(matches!(decoded, Err(BwError::Expired)));
     }
@@ -164,11 +165,12 @@ mod tests {
     #[test]
     fn encode_decode_with_salt_test() {
         let salt = b"Secret Salt";
-        let token = BwTokenDefault::new(60, "This is payload".to_string());
+        let token = ExpiredSignedDefault::new(60, "This is payload".to_string());
         let ed_key = EdKey::generate().expect("Must generate a key");
 
         let encoded = token.encode_with_salt(salt.as_slice(), &ed_key).unwrap();
-        let decoded = BwTokenDefault::decode_salted::<String>(&encoded, salt.as_slice(), &ed_key);
+        let decoded =
+            ExpiredSignedDefault::decode_salted::<String>(&encoded, salt.as_slice(), &ed_key);
 
         assert!(decoded.is_ok());
         let decoded = decoded.unwrap();
@@ -178,12 +180,15 @@ mod tests {
     #[test]
     fn encode_decode_with_incorrect_salt_test() {
         let salt = b"Secret Salt";
-        let token = BwTokenDefault::new(60, "This is payload".to_string());
+        let token = ExpiredSignedDefault::new(60, "This is payload".to_string());
         let ed_key = EdKey::generate().expect("Must generate a key");
 
         let encoded = token.encode_with_salt(salt.as_slice(), &ed_key).unwrap();
-        let decoded =
-            BwTokenDefault::decode_salted::<String>(&encoded, b"Wrong Salt".as_slice(), &ed_key);
+        let decoded = ExpiredSignedDefault::decode_salted::<String>(
+            &encoded,
+            b"Wrong Salt".as_slice(),
+            &ed_key,
+        );
 
         assert!(matches!(decoded, Err(BwError::InvalidSignature)));
     }

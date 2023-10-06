@@ -25,6 +25,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
         }
     }
 
+    #[inline]
     pub fn encode(&self, key: &dyn CryptoKey) -> Result<Vec<u8>, BwError> {
         let payload_bytes = bincode::serialize(&self.payload).expect("Serialization failed");
         let mut encoded = key.sign(&payload_bytes)?;

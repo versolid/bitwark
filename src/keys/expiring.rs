@@ -3,26 +3,26 @@ use std::ops::Deref;
 use chrono::Utc;
 
 use crate::error::BwError;
-use crate::keys::{CryptoKey, RollingKey};
+use crate::keys::RollingKey;
+use crate::Generator;
 
-pub struct ExpiringKey<K: CryptoKey> {
+pub struct Expiring<K: Generator> {
     init_exp: i64,
     exp: i64,
-    key: K,
+    object: K,
 }
 
-impl<K: CryptoKey> ExpiringKey<K> {
+impl<K: Generator> Expiring<K> {
     #[inline]
     pub fn generate(exp_sec: i64) -> Result<Self, BwError> {
         let expiration = Utc::now()
             .checked_add_signed(chrono::Duration::seconds(exp_sec))
             .expect("valid timestamp")
             .timestamp();
-        let key = CryptoKey::generate()?;
         Ok(Self {
             init_exp: exp_sec,
             exp: expiration,
-            key,
+            object: K::generate()?,
         })
     }
 
@@ -32,10 +32,10 @@ impl<K: CryptoKey> ExpiringKey<K> {
     }
 }
 
-impl<K: CryptoKey> RollingKey for ExpiringKey<K> {
+impl<K: Generator> RollingKey for Expiring<K> {
     #[inline]
     fn roll(&mut self) -> Result<(), BwError> {
-        self.key = CryptoKey::generate()?;
+        self.object = K::generate()?;
         self.exp = Utc::now()
             .checked_add_signed(chrono::Duration::seconds(self.init_exp))
             .expect("valid timestamp")
@@ -44,11 +44,11 @@ impl<K: CryptoKey> RollingKey for ExpiringKey<K> {
     }
 }
 
-impl<K: CryptoKey> Deref for ExpiringKey<K> {
+impl<K: Generator> Deref for Expiring<K> {
     type Target = K;
 
     fn deref(&self) -> &Self::Target {
-        &self.key
+        &self.object
     }
 }
 
@@ -57,17 +57,18 @@ impl<K: CryptoKey> Deref for ExpiringKey<K> {
 #[cfg(test)]
 mod tests {
     use crate::keys::ed::EdKey;
-    use crate::keys::expiring::ExpiringKey;
-    use crate::keys::{CryptoKey, RollingKey};
+    use crate::keys::expiring::Expiring;
+    use crate::keys::CryptoKey;
+    use crate::keys::RollingKey;
 
     #[test]
     fn test_generate() {
-        let key = ExpiringKey::<EdKey>::generate(10);
+        let key = Expiring::<EdKey>::generate(10);
         assert!(key.is_ok());
     }
     #[test]
     fn test_update_key_verify_failed() {
-        let mut key = ExpiringKey::<EdKey>::generate(10).unwrap();
+        let mut key = Expiring::<EdKey>::generate(10).unwrap();
         let message = b"Hello world!";
         let signature_bytes = key.sign(&message[..]).unwrap();
 
@@ -78,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_sign_with_same_signature() {
-        let key = ExpiringKey::<EdKey>::generate(10).unwrap();
+        let key = Expiring::<EdKey>::generate(10).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
         let signature_bytes_2 = key.sign(&message[..]).unwrap();
@@ -90,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_update_key_sign_with_different_signature() {
-        let mut key = ExpiringKey::<EdKey>::generate(10).unwrap();
+        let mut key = Expiring::<EdKey>::generate(10).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
         key.roll().expect("Must roll correctly");
