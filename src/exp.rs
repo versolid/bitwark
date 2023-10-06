@@ -4,8 +4,8 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::error::BwError;
-use crate::keys::RollingKey;
 use crate::Generator;
+use crate::Rotation;
 
 #[derive(Serialize, Deserialize)]
 pub struct Expiring<K: Generator> {
@@ -39,9 +39,9 @@ impl<K: Generator> Expiring<K> {
     }
 }
 
-impl<K: Generator> RollingKey for Expiring<K> {
+impl<K: Generator> Rotation for Expiring<K> {
     #[inline]
-    fn roll(&mut self) -> Result<(), BwError> {
+    fn rotate(&mut self) -> Result<(), BwError> {
         self.object = K::generate()?;
         self.exp = Utc::now()
             .checked_add_signed(chrono::Duration::milliseconds(self.init_exp))
@@ -63,10 +63,10 @@ impl<K: Generator> Deref for Expiring<K> {
 
 #[cfg(test)]
 mod tests {
-    use crate::expiring::Expiring;
+    use crate::exp::Expiring;
     use crate::keys::ed::EdKey;
     use crate::keys::CryptoKey;
-    use crate::keys::RollingKey;
+    use crate::Rotation;
 
     #[test]
     fn test_generate() {
@@ -79,7 +79,7 @@ mod tests {
         let message = b"Hello world!";
         let signature_bytes = key.sign(&message[..]).unwrap();
 
-        assert!(key.roll().is_ok(), "failed to roll key");
+        assert!(key.rotate().is_ok(), "failed to roll key");
         let result = key.verify(message.as_slice(), &signature_bytes);
         assert!(result.is_err(), "Failed to regenerate properly");
     }
@@ -101,7 +101,7 @@ mod tests {
         let mut key = Expiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
-        key.roll().expect("Must roll correctly");
+        key.rotate().expect("Must roll correctly");
 
         let signature_bytes_2 = key.sign(&message[..]).unwrap();
         assert_ne!(

@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_384};
@@ -80,10 +80,11 @@ impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringSigned<T, H> 
 
 #[cfg(test)]
 mod tests {
-    use crate::expiring::Expiring;
+    use crate::exp::Expiring;
     use crate::keys::ed::EdKey;
-    use crate::keys::RollingKey;
     use crate::Generator;
+    use crate::Rotation;
+    use chrono::Duration;
 
     use super::*;
 
@@ -124,7 +125,7 @@ mod tests {
 
         let encoded = token.encode(&*ed_key).unwrap();
         // change token
-        ed_key.roll().unwrap();
+        ed_key.rotate().unwrap();
         let decoded = ExpiringSigned::<String>::decode(&encoded, &*ed_key);
 
         assert!(matches!(decoded, Err(BwError::InvalidSignature)));

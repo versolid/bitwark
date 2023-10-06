@@ -47,7 +47,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
     pub fn new(payload: T) -> Self {
         SignedPayload {
             payload,
-            digest: PhantomData::<H>::default(),
+            digest: PhantomData::<H>,
         }
     }
 
@@ -121,7 +121,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
 
         Ok(SignedPayload {
             payload,
-            digest: PhantomData::<H>::default(),
+            digest: PhantomData::<H>,
         })
     }
 
@@ -159,7 +159,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
 
         Ok(SignedPayload {
             payload,
-            digest: PhantomData::<H>::default(),
+            digest: PhantomData::<H>,
         })
     }
 }
@@ -176,7 +176,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> Deref for SignedPayload<T, H> {
 #[inline(always)]
 fn hash<H: Digest>(bytes: &[u8]) -> Vec<u8> {
     let mut hasher = H::new();
-    hasher.update(&bytes);
+    hasher.update(bytes);
     hasher.finalize().to_vec()
 }
 
