@@ -1,28 +1,35 @@
 use std::ops::Deref;
 
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 use crate::error::BwError;
-use crate::keys::{CryptoKey, RollingKey};
+use crate::Generator;
+use crate::Rotation;
 
-pub struct ExpiringKey<K: CryptoKey> {
+#[derive(Serialize, Deserialize)]
+pub struct Expiring<K: Generator> {
     init_exp: i64,
     exp: i64,
-    key: K,
+    object: K,
 }
 
-impl<K: CryptoKey> ExpiringKey<K> {
+impl<K: Generator> Expiring<K> {
     #[inline]
-    pub fn generate(exp_sec: i64) -> Result<Self, BwError> {
+    pub fn generate(exp: chrono::Duration) -> Result<Self, BwError> {
+        Self::new(exp, K::generate()?)
+    }
+
+    #[inline]
+    pub fn new(exp: chrono::Duration, object: K) -> Result<Self, BwError> {
         let expiration = Utc::now()
-            .checked_add_signed(chrono::Duration::seconds(exp_sec))
-            .expect("valid timestamp")
+            .checked_add_signed(exp)
+            .ok_or(BwError::IncorrectTimestamp)?
             .timestamp();
-        let key = CryptoKey::generate()?;
         Ok(Self {
-            init_exp: exp_sec,
+            init_exp: exp.num_milliseconds(),
             exp: expiration,
-            key,
+            object,
         })
     }
 
@@ -32,23 +39,23 @@ impl<K: CryptoKey> ExpiringKey<K> {
     }
 }
 
-impl<K: CryptoKey> RollingKey for ExpiringKey<K> {
+impl<K: Generator> Rotation for Expiring<K> {
     #[inline]
-    fn roll(&mut self) -> Result<(), BwError> {
-        self.key = CryptoKey::generate()?;
+    fn rotate(&mut self) -> Result<(), BwError> {
+        self.object = K::generate()?;
         self.exp = Utc::now()
-            .checked_add_signed(chrono::Duration::seconds(self.init_exp))
-            .expect("valid timestamp")
+            .checked_add_signed(chrono::Duration::milliseconds(self.init_exp))
+            .ok_or(BwError::IncorrectTimestamp)?
             .timestamp();
         Ok(())
     }
 }
 
-impl<K: CryptoKey> Deref for ExpiringKey<K> {
+impl<K: Generator> Deref for Expiring<K> {
     type Target = K;
 
     fn deref(&self) -> &Self::Target {
-        &self.key
+        &self.object
     }
 }
 
@@ -56,29 +63,30 @@ impl<K: CryptoKey> Deref for ExpiringKey<K> {
 
 #[cfg(test)]
 mod tests {
+    use crate::exp::Expiring;
     use crate::keys::ed::EdKey;
-    use crate::keys::expiring::ExpiringKey;
-    use crate::keys::{CryptoKey, RollingKey};
+    use crate::keys::CryptoKey;
+    use crate::Rotation;
 
     #[test]
     fn test_generate() {
-        let key = ExpiringKey::<EdKey>::generate(10);
+        let key = Expiring::<EdKey>::generate(chrono::Duration::seconds(60));
         assert!(key.is_ok());
     }
     #[test]
     fn test_update_key_verify_failed() {
-        let mut key = ExpiringKey::<EdKey>::generate(10).unwrap();
+        let mut key = Expiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
         let signature_bytes = key.sign(&message[..]).unwrap();
 
-        assert!(key.roll().is_ok(), "failed to roll key");
+        assert!(key.rotate().is_ok(), "failed to roll key");
         let result = key.verify(message.as_slice(), &signature_bytes);
         assert!(result.is_err(), "Failed to regenerate properly");
     }
 
     #[test]
     fn test_sign_with_same_signature() {
-        let key = ExpiringKey::<EdKey>::generate(10).unwrap();
+        let key = Expiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
         let signature_bytes_2 = key.sign(&message[..]).unwrap();
@@ -90,10 +98,10 @@ mod tests {
 
     #[test]
     fn test_update_key_sign_with_different_signature() {
-        let mut key = ExpiringKey::<EdKey>::generate(10).unwrap();
+        let mut key = Expiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
-        key.roll().expect("Must roll correctly");
+        key.rotate().expect("Must roll correctly");
 
         let signature_bytes_2 = key.sign(&message[..]).unwrap();
         assert_ne!(

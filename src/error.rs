@@ -8,4 +8,8 @@ pub enum BwError {
     InvalidSignature,
     #[error("Invalid token format")]
     InvalidTokenFormat,
+    #[error("Failed to generate a salt")]
+    FailedSaltGeneration,
+    #[error("Incorrect timestamp")]
+    IncorrectTimestamp,
 }
