@@ -16,12 +16,13 @@ The inception of Bitwark is inspired by the quest to amalgamate binary-level sec
 Embark on a secure journey with Bitwark by leveraging the following functionality in your Rust applications:
 ```Rust
 use bitwark::{payload::SignedPayload, keys::ed::EdKey, keys::CryptoKey, Generator};
+use chrono::Duration;
 
 // creating a key
 let key = EdKey::generate()?;
 
 // Rotating key
-let mut expiring_key = Expiring<EdKey>::new(60, key);
+let mut expiring_key = Expiring<EdKey>::new(Duration::seconds(10), key);
 if expiring_key.is_expired() {
     expiring_key.roll()?;
 }
@@ -46,10 +47,10 @@ Contributors are the backbone of open-source projects, and Bitwark warmly welcom
 
 #### 🎗 How to Contribute:
 
-🧠 Propose Ideas: Share enhancement ideas or report bugs through Issues.
-🛠 Code Contributions: Submit a Pull Request with new features, enhancements, or bug fixes.
-📚 Improve Documentation: Help us make our documentation comprehensive and user-friendly.
-💬 Community Interaction: Join discussions and provide feedback to help make Bitwark better.
+* 🧠 Propose Ideas: Share enhancement ideas or report bugs through Issues.
+* 🛠 Code Contributions: Submit a Pull Request with new features, enhancements, or bug fixes.
+* 📚 Improve Documentation: Help us make our documentation comprehensive and user-friendly.
+* 💬 Community Interaction: Join discussions and provide feedback to help make Bitwark better.
 
 ## 📜 License
 Bitwark is open-source software, freely available under the MIT License.
