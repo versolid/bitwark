@@ -7,6 +7,7 @@ Bitwark implements binary JSON Web Tokens as a bandwidth-efficient alternative t
 ### 🔐 Key Features:
 
 * *Binary Signed Payload*: Compact binary encoding of signed payload (similar to JWT)
+* *Default Cryptography*: Bitwark by default uses EdDSA for signing and verifying with SHA3-384 (EdDSA_SHA3-384).
 * *Rotation*: Easily rotate keys and salts, ensuring your application adapts to the dynamic security landscape.
 * *Salting*: Random data injection to increase entropy and slow brute force attacks.
 * *Lightweight*: Minimal overhead, ensuring optimal performance even in high-throughput scenarios.
