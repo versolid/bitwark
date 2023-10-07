@@ -55,6 +55,7 @@
 //! cryptographic operations to safeguard against various forms of attack and to ensure
 //! that identical inputs do not produce identical outputs across different users or sessions.
 //!
+//! ### Salt variants
 //! * `Salt64` - 64 bytes length
 //! * `Salt32`
 //! * `Salt16`

@@ -1,7 +1,6 @@
-use ed25519_dalek::pkcs8::{EncodePrivateKey, EncodePublicKey, SecretDocument};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use crate::error::BwError;
 use crate::keys::{PublicKey, SecretKey};
@@ -120,7 +119,7 @@ impl PublicKey for EdKey {
     fn verify(&self, bytes: &[u8], signature: &[u8]) -> Result<(), BwError> {
         let signature = &Signature::try_from(signature).map_err(|_| BwError::InvalidSignature)?;
         self.signing_key
-            .verify(bytes, &signature)
+            .verify(bytes, signature)
             .map_err(|_| BwError::InvalidSignature)
     }
 }
@@ -159,7 +158,7 @@ impl PublicKey for EdPubKey {
     fn verify(&self, bytes: &[u8], signature: &[u8]) -> Result<(), BwError> {
         let signature = &Signature::try_from(signature).map_err(|_| BwError::InvalidSignature)?;
         self.verifying_key
-            .verify(bytes, &signature)
+            .verify(bytes, signature)
             .map_err(|_| BwError::InvalidSignature)
     }
 }
