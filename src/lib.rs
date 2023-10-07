@@ -34,7 +34,7 @@
 //! ```
 //! # use bitwark::keys::ed::EdKey;
 //! # use bitwark::exp::Expiring;
-//! # use bitwark::keys::CryptoKey;
+//! # use bitwark::keys::{PublicKey, SecretKey};
 //! # use bitwark::payload::SignedPayload;
 //! # use bitwark::Generator;
 //! # use chrono::Duration;
@@ -55,6 +55,7 @@
 //! cryptographic operations to safeguard against various forms of attack and to ensure
 //! that identical inputs do not produce identical outputs across different users or sessions.
 //!
+//! ### Salt variants
 //! * `Salt64` - 64 bytes length
 //! * `Salt32`
 //! * `Salt16`

@@ -65,7 +65,7 @@ impl<K: Generator> Deref for Expiring<K> {
 mod tests {
     use crate::exp::Expiring;
     use crate::keys::ed::EdKey;
-    use crate::keys::CryptoKey;
+    use crate::keys::{PublicKey, SecretKey};
     use crate::Rotation;
 
     #[test]
