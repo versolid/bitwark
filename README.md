@@ -1,16 +1,15 @@
 # Bitwark
-> Empowering secure digital interactions with robust binary token management and dynamic rolling keys
-
-Shield your digital applications with lightweight binary alternative to JWT tokens, seamlessly integrated key rotation, and convenient salt functionalities—all catered through the robust Rust library, Bitwark.
+> Provides robust security for Rust applications through compact binary tokens and automated cryptographic defenses.
 
 ## 🚀 Introduction
-The inception of Bitwark is inspired by the quest to amalgamate binary-level security and user-friendly API, ensuring your applications are fortified with a lightweight yet impenetrable cryptographic shield. Bitwark implements binary JWT tokens, providing a secure, efficient, and compact alternative to traditional JWTs, making it apt for constrained environments where every byte matters.
+Bitwark implements binary JSON Web Tokens as a bandwidth-efficient alternative to standard JWTs, while integrating automated key rotation and salting to dynamically strengthen cryptographic protections.
 
 ### 🔐 Key Features:
 
-* Binary Signed Tokens: Compact and efficient representation of JWTs for resource-constrained environments.
-* Dynamic Key and Salt Rotation: Easily rotate keys and salts, ensuring your application adapts to the dynamic security landscape.
-* Lightweight: Minimal overhead, ensuring optimal performance even in high-throughput scenarios.
+* *Binary Signed Payload*: Compact binary encoding of signed payload (similar to JWT)
+* *Rotation*: Easily rotate keys and salts, ensuring your application adapts to the dynamic security landscape.
+* *Salting*: Random data injection to increase entropy and slow brute force attacks.
+* *Lightweight*: Minimal overhead, ensuring optimal performance even in high-throughput scenarios.
 
 ## 🛠️ Getting Started
 Embark on a secure journey with Bitwark by leveraging the following functionality in your Rust applications:

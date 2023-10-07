@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_384};
 
 use crate::error::BwError;
-use crate::keys::{SecretKey, PublicKey};
+use crate::keys::{PublicKey, SecretKey};
 use crate::payload::SignedPayload;
 
 #[derive(Serialize, Deserialize)]

@@ -2,7 +2,7 @@ use crate::error::BwError;
 
 pub mod ed;
 
-pub trait SecretKey{
+pub trait SecretKey {
     fn sign(&self, bytes: &[u8]) -> Result<Vec<u8>, BwError>;
 }
 

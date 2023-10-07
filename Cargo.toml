@@ -18,7 +18,7 @@ exclude = [
 
 [dependencies]
 serde = { version = "1.0.175", features = ["derive"] }
-ed25519-dalek = { version = "2.0.0", features = ["rand_core", "pkcs8"] }
+ed25519-dalek = { version = "2.0.0", features = ["rand_core", "pkcs8", "serde"] }
 bincode = "1.3.3"
 ring = "0.17.0"
 rand = "0.8.5"

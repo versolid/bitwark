@@ -76,7 +76,8 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
     #[inline]
     pub fn encode(&self, key: &dyn SecretKey) -> Result<Vec<u8>, BwError> {
         let payload_bytes = bincode::serialize(&self.payload).expect("Serialization failed");
-        let mut encoded = key.sign(&payload_bytes)?;
+        let hashed_payload_bytes = hash::<H>(&payload_bytes);
+        let mut encoded = key.sign(&hashed_payload_bytes)?;
         encoded.extend(payload_bytes);
         Ok(encoded)
     }
@@ -112,9 +113,10 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
         }
 
         let (signature, body) = bytes.split_at(SIGNATURE_LENGTH);
+        let hashed_body_bytes = hash::<H>(body);
 
         // Verify signature
-        key.verify(body, signature)
+        key.verify(&hashed_body_bytes, signature)
             .map_err(|_| BwError::InvalidSignature)?;
 
         let payload = bincode::deserialize(body).map_err(|_| BwError::InvalidTokenFormat)?;
