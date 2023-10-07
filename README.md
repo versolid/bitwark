@@ -14,7 +14,7 @@ The inception of Bitwark is inspired by the quest to amalgamate binary-level sec
 
 ## 🛠️ Getting Started
 Embark on a secure journey with Bitwark by leveraging the following functionality in your Rust applications:
-```Rust
+```rust
 use bitwark::{payload::SignedPayload, keys::ed::EdKey, keys::CryptoKey, Generator};
 use chrono::Duration;
 

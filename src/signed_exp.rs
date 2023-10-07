@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_384};
 
 use crate::error::BwError;
-use crate::keys::CryptoKey;
+use crate::keys::{SecretKey, PublicKey};
 use crate::payload::SignedPayload;
 
 #[derive(Serialize, Deserialize)]
@@ -37,12 +37,12 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
     }
 
     #[inline(always)]
-    pub fn encode(&self, key: &dyn CryptoKey) -> Result<Vec<u8>, BwError> {
+    pub fn encode(&self, key: &dyn SecretKey) -> Result<Vec<u8>, BwError> {
         self.signed_payload.encode(key)
     }
 
     #[inline(always)]
-    pub fn decode(bytes: &[u8], key: &dyn CryptoKey) -> Result<Self, BwError> {
+    pub fn decode(bytes: &[u8], key: &dyn PublicKey) -> Result<Self, BwError> {
         let signed_payload = SignedPayload::<ExpiringBlock<T>, H>::decode(bytes, key)?;
         // Verify expiration
         if Utc::now().timestamp() > signed_payload.exp {
@@ -53,11 +53,11 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
     }
 
     #[inline(always)]
-    pub fn encode_with_salt(&self, salt: &[u8], key: &dyn CryptoKey) -> Result<Vec<u8>, BwError> {
+    pub fn encode_with_salt(&self, salt: &[u8], key: &dyn SecretKey) -> Result<Vec<u8>, BwError> {
         self.signed_payload.encode_salted(salt, key)
     }
 
-    pub fn decode_salted(bytes: &[u8], salt: &[u8], key: &dyn CryptoKey) -> Result<Self, BwError> {
+    pub fn decode_salted(bytes: &[u8], salt: &[u8], key: &dyn PublicKey) -> Result<Self, BwError> {
         let signed_payload = SignedPayload::<ExpiringBlock<T>, H>::decode_salted(bytes, salt, key)?;
 
         if Utc::now().timestamp() > signed_payload.exp {

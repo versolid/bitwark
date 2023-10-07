@@ -1,8 +1,10 @@
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::pkcs8::{EncodePrivateKey, EncodePublicKey, SecretDocument};
 use rand::rngs::OsRng;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::BwError;
-use crate::keys::CryptoKey;
+use crate::keys::{PublicKey, SecretKey};
 use crate::Generator;
 
 /// Represents an EdDSA (ed25519) key, which can be used for signing messages and verifying signatures.
@@ -17,7 +19,7 @@ use crate::Generator;
 ///
 /// ```
 /// # use bitwark::Generator;
-/// # use bitwark::keys::CryptoKey;
+/// # use bitwark::keys::SecretKey;
 /// # use bitwark::keys::ed::EdKey;
 /// let key = EdKey::generate().unwrap();
 /// let signature_bytes = key.sign(b"Hello world!").unwrap();
@@ -25,7 +27,13 @@ use crate::Generator;
 /// ```
 pub struct EdKey {
     signing_key: SigningKey,
-    verifying_key: VerifyingKey,
+}
+
+impl EdKey {
+    #[inline]
+    fn public_key(&self) -> Result<EdPubKey, BwError> {
+        Ok(EdPubKey::from(self))
+    }
 }
 
 impl Generator for EdKey {
@@ -48,15 +56,13 @@ impl Generator for EdKey {
     /// ```
     #[inline]
     fn generate() -> Result<Self, BwError> {
-        let (verifying_key, signing_key) = generate_ed_keypair();
         Ok(Self {
-            signing_key,
-            verifying_key,
+            signing_key: generate_ed_keypair(),
         })
     }
 }
 
-impl CryptoKey for EdKey {
+impl SecretKey for EdKey {
     /// Signs a byte slice using the `signing_key`.
     ///
     /// # Parameters
@@ -72,7 +78,7 @@ impl CryptoKey for EdKey {
     ///
     /// ```
     /// # use bitwark::Generator;
-    /// # use bitwark::keys::CryptoKey;
+    /// # use bitwark::keys::SecretKey;
     /// # use bitwark::keys::ed::EdKey;
     /// let key = EdKey::generate().unwrap();
     /// let signature_bytes = key.sign(b"Hello world!").unwrap();
@@ -82,7 +88,9 @@ impl CryptoKey for EdKey {
     fn sign(&self, bytes: &[u8]) -> Result<Vec<u8>, BwError> {
         Ok(self.signing_key.sign(bytes).to_vec())
     }
+}
 
+impl PublicKey for EdKey {
     /// Verifies a signature against a message using the `verifying_key`.
     ///
     /// # Parameters
@@ -98,7 +106,7 @@ impl CryptoKey for EdKey {
     ///
     /// ```
     /// # use bitwark::Generator;
-    /// # use bitwark::keys::CryptoKey;
+    /// # use bitwark::keys::{PublicKey, SecretKey};
     /// # use bitwark::keys::ed::EdKey;
     /// let key = EdKey::generate().unwrap();
     /// let message = b"Hello world!";
@@ -109,17 +117,75 @@ impl CryptoKey for EdKey {
     /// ```
     #[inline]
     fn verify(&self, bytes: &[u8], signature: &[u8]) -> Result<(), BwError> {
-        self.verifying_key
-            .verify(bytes, &Signature::try_from(signature).unwrap())
+        let signature = &Signature::try_from(signature)
+            .map_err(|_| BwError::InvalidSignature)?;
+        self.signing_key
+            .verify(bytes, &signature)
             .map_err(|_| BwError::InvalidSignature)
     }
 }
 
 #[inline(always)]
-pub fn generate_ed_keypair() -> (VerifyingKey, SigningKey) {
+pub fn generate_ed_keypair() -> SigningKey {
     let mut csprng = OsRng;
-    let signing_key: SigningKey = SigningKey::generate(&mut csprng);
-    (signing_key.verifying_key(), signing_key)
+    SigningKey::generate(&mut csprng)
+}
+
+impl<'de> Deserialize<'de> for EdKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+        let pkcs8: Vec<u8> = serde::Deserialize::deserialize(deserializer)?;
+        let signing_key = ed25519_dalek::SigningKey::try_from(&pkcs8[..])
+            .map_err(|e| serde::de::Error::custom(format!("Invalid signing key: {}", e)))?;
+        Ok(EdKey { signing_key })
+    }
+}
+
+impl Serialize for EdKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let pkcs8 = self.signing_key.to_pkcs8_der()
+            .map_err(|e| serde::ser::Error::custom(format!("PKCS#8 serialization failed: {}", e)))?
+            .to_bytes();
+        serializer.serialize_bytes(&pkcs8)
+    }
+}
+
+pub struct EdPubKey {
+    verifying_key: VerifyingKey
+}
+
+impl PublicKey for EdPubKey {
+    fn verify(&self, bytes: &[u8], signature: &[u8]) -> Result<(), BwError> {
+        let signature = &Signature::try_from(signature)
+            .map_err(|_| BwError::InvalidSignature)?;
+        self.verifying_key
+            .verify(bytes, &signature)
+            .map_err(|_| BwError::InvalidSignature)
+    }
+}
+
+impl From<&EdKey> for EdPubKey {
+    fn from(secret_key: &EdKey) -> Self {
+        Self {
+            verifying_key: secret_key.signing_key.verifying_key(),
+        }
+    }
+}
+impl<'de> Deserialize<'de> for EdPubKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+        let pkcs8: Vec<u8> = serde::Deserialize::deserialize(deserializer)?;
+        let verifying_key = ed25519_dalek::VerifyingKey::try_from(&pkcs8[..])
+            .map_err(|e| serde::de::Error::custom(format!("Invalid signing key: {}", e)))?;
+        Ok(EdPubKey { verifying_key })
+    }
+}
+
+impl Serialize for EdPubKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let pkcs8 = self.verifying_key.to_public_key_der()
+            .map_err(|e| serde::ser::Error::custom(format!("PKCS#8 serialization failed: {}", e)))?
+            .to_vec();
+        serializer.serialize_bytes(&pkcs8)
+    }
 }
 
 // Tests --------------------------------------------------------------------------------------
@@ -127,7 +193,7 @@ pub fn generate_ed_keypair() -> (VerifyingKey, SigningKey) {
 #[cfg(test)]
 mod tests {
     use crate::keys::ed::EdKey;
-    use crate::keys::CryptoKey;
+    use crate::keys::{PublicKey, SecretKey};
     use crate::Generator;
 
     #[test]
@@ -191,5 +257,29 @@ mod tests {
             signature_bytes_1, signature_bytes_2,
             "Failed to regenerate properly"
         );
+    }
+
+    #[test]
+    fn test_public_key_verify() {
+        let secret_key = EdKey::generate().unwrap();
+        let public_key = secret_key.public_key().unwrap();
+
+        let message = b"Hello world!";
+        let signature_bytes = secret_key.sign(&message[..]).unwrap();
+
+        let result = public_key.verify(message.as_slice(), &signature_bytes);
+        assert!(result.is_ok(), "Failed to verify signature");
+    }
+
+    #[test]
+    fn test_serialize() {
+        // let secret_key = EdKey::generate().unwrap();
+        // let public_key = secret_key.public_key().unwrap();
+        //
+        // let message = b"Hello world!";
+        // let signature_bytes = secret_key.sign(&message[..]).unwrap();
+        //
+        // let result = public_key.verify(message.as_slice(), &signature_bytes);
+        // assert!(result.is_ok(), "Failed to verify signature");
     }
 }

@@ -34,7 +34,7 @@
 //! ```
 //! # use bitwark::keys::ed::EdKey;
 //! # use bitwark::exp::Expiring;
-//! # use bitwark::keys::CryptoKey;
+//! # use bitwark::keys::{PublicKey, SecretKey};
 //! # use bitwark::payload::SignedPayload;
 //! # use bitwark::Generator;
 //! # use chrono::Duration;
