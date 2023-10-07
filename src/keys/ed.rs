@@ -31,7 +31,7 @@ pub struct EdKey {
 
 impl EdKey {
     #[inline]
-    fn public_key(&self) -> Result<EdPubKey, BwError> {
+    pub fn public_key(&self) -> Result<EdPubKey, BwError> {
         Ok(EdPubKey::from(self))
     }
 }

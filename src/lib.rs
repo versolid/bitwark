@@ -1,6 +1,6 @@
-//! # Bitwark: Binary Bulwark in Rust
+//! # 🛡️ Bitwark: Binary Bulwark in Rust
 //! Bitwark is a cryptographic Rust library (used ring, ed25519-dalek), designed to facilitate secure digital interactions through a meticulous amalgamation of lightweight binary JWT tokens, dynamic key rotation, and strategic salt functionalities, all embedded in a minimalistic API.
-//! Through Bitwark, developers can seamlessly perform crucial security operations, such as key and salt generation, payload signing, and secure message transmission, all whilst ensuring optimal performance and security in their applications.
+//! Through Bitwark, developers can seamlessly perform crucial security operations, such as key and salt generation, payload signing, and integrity message verification, all whilst ensuring optimal performance and security in their applications.
 //!
 //! ## Getting Started
 //! Engage in a fortified cryptographic experience with Bitwark, utilizing functionalities like secure payload creation, signature encoding, and strategic key rotation with simplicity and efficacy.
@@ -51,19 +51,20 @@
 //! ```
 //!
 //! ## Salting
-//! The `SaltN` struct can be utilized to generate random salts which are pivotal in
+//! The `Salt[N]` struct can be utilized to generate random salts which are pivotal in
 //! cryptographic operations to safeguard against various forms of attack and to ensure
 //! that identical inputs do not produce identical outputs across different users or sessions.
 //!
 //! ### Salt variants
-//! * `Salt64` - 64 bytes length
+//! * `Salt126` - 126 bytes length
+//! * `Salt64`
 //! * `Salt32`
 //! * `Salt16`
 //! * `Salt12`
 //!
 //! ```
-//! # use bitwark::salt::Salt64;
-//! # use bitwark::Generator;
+//! use bitwark::salt::Salt64;
+//! use bitwark::Generator;
 //!
 //! let salt1 = Salt64::generate().unwrap();
 //! let salt2 = Salt64::generate().unwrap();
@@ -146,11 +147,11 @@ pub trait Generator {
 /// # Example
 ///
 /// ```
+/// # use bitwark::{Generator, Rotation};
 /// # use bitwark::keys::ed::EdKey;
-/// # use bitwark::Rotation;
 /// # use bitwark::exp::AutoExpiring;
-/// # use bitwark::Generator;
 /// # use chrono::Duration;
+///
 /// let key = EdKey::generate().expect("Key generation failed");
 /// let mut expiring_key = AutoExpiring::new(Duration::seconds(10), key).unwrap();
 /// expiring_key.rotate().expect("Key generation failed");
