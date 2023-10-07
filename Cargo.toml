@@ -1,6 +1,6 @@
 [package]
 name = "bitwark"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["Ivan Ermolaev <ermolaevym@gmail.com>"]
 edition = "2021"
 license = "MIT"

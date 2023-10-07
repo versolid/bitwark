@@ -49,7 +49,7 @@ fn generate_secure_bytes(length: usize) -> Result<Vec<u8>, BwError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{exp::Expiring, Rotation};
+    use crate::{exp::AutoExpiring, Rotation};
 
     use super::*;
 
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn generate_expiring_salt() {
-        let mut salt1 = Expiring::<Salt64>::generate(chrono::Duration::seconds(60)).unwrap();
+        let mut salt1 = AutoExpiring::<Salt64>::generate(chrono::Duration::seconds(60)).unwrap();
         let bytes = salt1.clone();
         salt1.rotate().unwrap();
         assert_ne!(&bytes, &**salt1, "Failed to compare");
