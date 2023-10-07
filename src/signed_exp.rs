@@ -80,7 +80,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringSigned<T, H> 
 
 #[cfg(test)]
 mod tests {
-    use crate::exp::Expiring;
+    use crate::exp::AutoExpiring;
     use crate::keys::ed::EdKey;
     use crate::Generator;
     use crate::Rotation;
@@ -120,7 +120,7 @@ mod tests {
             "This is payload".to_string(),
         )
         .unwrap();
-        let mut ed_key = Expiring::<EdKey>::generate(chrono::Duration::seconds(60))
+        let mut ed_key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60))
             .expect("Must create a token");
 
         let encoded = token.encode(&*ed_key).unwrap();

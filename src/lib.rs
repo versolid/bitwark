@@ -18,11 +18,11 @@
 //! ```
 //! # use bitwark::keys::ed::EdKey;
 //! # use bitwark::Rotation;
-//! # use bitwark::exp::Expiring;
+//! # use bitwark::exp::AutoExpiring;
 //! # use bitwark::Generator;
 //! # use chrono::Duration;
 //! let key = EdKey::generate().unwrap();
-//! let mut expiring_key = Expiring::new(Duration::seconds(10), key).unwrap();
+//! let mut expiring_key = AutoExpiring::new(Duration::seconds(10), key).unwrap();
 //! if expiring_key.is_expired() {
 //!     // update key internally
 //!     expiring_key.rotate().unwrap();
@@ -33,7 +33,7 @@
 //! Construct, encode, and decode secure payloads, ensuring message integrity through signature verification.
 //! ```
 //! # use bitwark::keys::ed::EdKey;
-//! # use bitwark::exp::Expiring;
+//! # use bitwark::exp::AutoExpiring;
 //! # use bitwark::keys::{PublicKey, SecretKey};
 //! # use bitwark::payload::SignedPayload;
 //! # use bitwark::Generator;
@@ -80,14 +80,14 @@
 //! Example with Rotation (Assuming `Expiring` is a structure which utilizes the `Rotation` trait):
 //!
 //! ```
-//! use bitwark::{salt::Salt64, exp::Expiring, Rotation, Generator};
+//! use bitwark::{salt::Salt64, exp::AutoExpiring, Rotation, Generator};
 //! use chrono::Duration;
 //!
 //! // Generating a salt.
 //! let salt = Salt64::generate().unwrap();
 //!
 //! // Creating an expiring salt with a lifespan of 10 seconds.
-//! let mut expiring_salt = Expiring::<Salt64>::new(Duration::seconds(10), salt).unwrap();
+//! let mut expiring_salt = AutoExpiring::<Salt64>::new(Duration::seconds(10), salt).unwrap();
 //!
 //! // Performing rotation when needed.
 //! if expiring_salt.is_expired() {
@@ -148,11 +148,11 @@ pub trait Generator {
 /// ```
 /// # use bitwark::keys::ed::EdKey;
 /// # use bitwark::Rotation;
-/// # use bitwark::exp::Expiring;
+/// # use bitwark::exp::AutoExpiring;
 /// # use bitwark::Generator;
 /// # use chrono::Duration;
 /// let key = EdKey::generate().expect("Key generation failed");
-/// let mut expiring_key = Expiring::new(Duration::seconds(10), key).unwrap();
+/// let mut expiring_key = AutoExpiring::new(Duration::seconds(10), key).unwrap();
 /// expiring_key.rotate().expect("Key generation failed");
 /// ```
 ///
