@@ -31,7 +31,7 @@ pub struct EdKey {
 
 impl EdKey {
     #[inline]
-    fn public_key(&self) -> Result<EdPubKey, BwError> {
+    pub fn public_key(&self) -> Result<EdPubKey, BwError> {
         Ok(EdPubKey::from(self))
     }
 }
@@ -130,25 +130,6 @@ pub fn generate_ed_keypair() -> SigningKey {
     SigningKey::generate(&mut csprng)
 }
 
-// impl<'de> Deserialize<'de> for EdKey {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
-//         let pkcs8: Vec<u8> = serde::Deserialize::deserialize(deserializer)?;
-//         let signing_key = ed25519_dalek::SigningKey::try_from(&pkcs8[..])
-//             .map_err(|e| serde::de::Error::custom(format!("Invalid signing key: {}", e)))?;
-//         Ok(EdKey { signing_key })
-//     }
-// }
-//
-// impl Serialize for EdKey {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-//         // let pkcs8 = self.signing_key.to_pkcs8_der()
-//         //     .map_err(|e| serde::ser::Error::custom(format!("PKCS#8 serialization failed: {}", e)))?
-//         //     .to_bytes();
-//         let pkcs8 = self.signing_key.to_bytes();
-//         serializer.serialize_bytes(&pkcs8)
-//     }
-// }
-
 #[derive(Serialize, Deserialize)]
 pub struct EdPubKey {
     verifying_key: VerifyingKey,
@@ -170,23 +151,6 @@ impl From<&EdKey> for EdPubKey {
         }
     }
 }
-// impl<'de> Deserialize<'de> for EdPubKey {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
-//         let pkcs8: Vec<u8> = serde::Deserialize::deserialize(deserializer)?;
-//         let verifying_key = ed25519_dalek::VerifyingKey::try_from(&pkcs8[..])
-//             .map_err(|e| serde::de::Error::custom(format!("Invalid signing key: {}", e)))?;
-//         Ok(EdPubKey { verifying_key })
-//     }
-// }
-//
-// impl Serialize for EdPubKey {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-//         let pkcs8 = self.verifying_key.to_public_key_der()
-//             .map_err(|e| serde::ser::Error::custom(format!("PKCS#8 serialization failed: {}", e)))?
-//             .to_vec();
-//         serializer.serialize_bytes(&pkcs8)
-//     }
-// }
 
 // Tests --------------------------------------------------------------------------------------
 

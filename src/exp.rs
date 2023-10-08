@@ -14,7 +14,7 @@ pub struct Expiring<K> {
     object: K,
 }
 
-impl<K: Generator> Expiring<K> {
+impl<K> Expiring<K> {
     #[inline]
     pub fn new(exp: chrono::Duration, object: K) -> Result<Self, BwError> {
         let expiration = Utc::now()
@@ -96,11 +96,13 @@ mod tests {
     use crate::{Generator, Rotation};
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_generate() {
         let key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60));
         assert!(key.is_ok());
     }
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_update_key_verify_failed() {
         let mut key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
@@ -112,6 +114,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_sign_with_same_signature() {
         let key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
@@ -124,6 +127,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_update_key_sign_with_different_signature() {
         let mut key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
@@ -138,6 +142,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_expired_expiring() {
         let key =
             Expiring::<EdKey>::new(chrono::Duration::seconds(-60), EdKey::generate().unwrap())
@@ -146,12 +151,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_expired_auth_expiring() {
         let key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(-60)).unwrap();
         assert!(key.is_expired(), "AutoExpiring must be expired");
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_serialize_expiring_secure_key() {
         let secret_key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
 

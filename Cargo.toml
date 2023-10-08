@@ -1,6 +1,6 @@
 [package]
 name = "bitwark"
-version = "1.0.2"
+version = "1.0.3"
 authors = ["Ivan Ermolaev <ermolaevym@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -8,6 +8,7 @@ readme = "README.md"
 description = "Empowering secure digital interactions with robust binary token management and dynamic rolling keys"
 homepage = "https://github.com/versolid/bitwark"
 repository = "https://github.com/versolid/bitwark"
+documentation = "https://docs.rs/bitwark"
 keywords = ["jwt", "auth", "token", "quic", "security"]
 categories = ["cryptography", "authentication"]
 
@@ -25,4 +26,3 @@ rand = "0.8.5"
 sha3 = "0.10.8"
 thiserror = "1.0.44"
 chrono = "0.4.26"
-

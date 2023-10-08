@@ -1,10 +1,41 @@
-//! # Bitwark: Binary Bulwark in Rust
+//! # 🛡️ Bitwark: Binary Bulwark in Rust
 //! Bitwark is a cryptographic Rust library (used ring, ed25519-dalek), designed to facilitate secure digital interactions through a meticulous amalgamation of lightweight binary JWT tokens, dynamic key rotation, and strategic salt functionalities, all embedded in a minimalistic API.
-//! Through Bitwark, developers can seamlessly perform crucial security operations, such as key and salt generation, payload signing, and secure message transmission, all whilst ensuring optimal performance and security in their applications.
+//! Through Bitwark, developers can seamlessly perform crucial security operations, such as key and salt generation, payload signing, and integrity message verification, all whilst ensuring optimal performance and security in their applications.
 //!
-//! ## Getting Started
+//! ## 🚀 Getting Started
 //! Engage in a fortified cryptographic experience with Bitwark, utilizing functionalities like secure payload creation, signature encoding, and strategic key rotation with simplicity and efficacy.
 //!
+//! ### 🔐 Key Features:
+//! * *Binary* Signed Payload: Compact binary encoding of signed payload (similar to JWT)
+//! * *Default* Cryptography: Bitwark by default uses EdDSA for signing and verifying with SHA3-384 (EdDSA_SHA3-384).
+//! * *Rotation* Easily rotate keys and salts, ensuring your application adapts to the dynamic security landscape.
+//! * *Salting*: Random data injection to increase entropy and slow brute force attacks.
+//! * *Lightweight*: Minimal overhead, ensuring optimal performance even in high-throughput scenarios.
+//!
+//! ## Signed Payload decoded as binary (alternative to JWT)
+//! ```
+//! # use bitwark::{exp::AutoExpiring, signed_exp::ExpiringSigned, salt::Salt64, keys::{ed::EdKey}};
+//! # use serde::{Serialize, Deserialize};
+//! # use chrono::Duration;
+//! #[derive(Serialize,Deserialize)]
+//! pub struct Claims {
+//!     pub permissions: Vec<String>,
+//! }
+//! // Generate an EdDSA key pair with a validity period of 10 minutes and a salt with a validity of 5 minutes.
+//! let exp_key = AutoExpiring::<EdKey>::generate(Duration::minutes(10)).unwrap();
+//! let exp_salt = AutoExpiring::<Salt64>::generate(Duration::minutes(5)).unwrap();
+//!
+//! // Instantiate a token with specified claims.
+//! let claims = Claims { permissions: vec!["users:read".to_string(), "users:write".to_string()]};
+//! let token = ExpiringSigned::<Claims>::new(Duration::seconds(120), claims).unwrap();
+//!
+//! // Create a binary encoding of the token, signed with the key and salt.
+//! let signed_token_bytes = token.encode_salted(&exp_salt, &*exp_key).expect("Failed to sign token");
+//!
+//! // Decode the token and verify its signature and validity.
+//! let decoded_token = ExpiringSigned::<Claims>::decode_salted(&signed_token_bytes, &exp_salt, &*exp_key).expect("Failed to decode a token");
+//! assert_eq!(2, decoded_token.permissions.len(), "Failed to find 2 permissions");
+//! ```
 //! ## Key Generation and Management
 //! Bitwark enables the generation and rotation of cryptographic keys, ensuring persistent security through periodic key renewals.
 //! ```
@@ -51,19 +82,20 @@
 //! ```
 //!
 //! ## Salting
-//! The `SaltN` struct can be utilized to generate random salts which are pivotal in
+//! The `Salt[N]` struct can be utilized to generate random salts which are pivotal in
 //! cryptographic operations to safeguard against various forms of attack and to ensure
 //! that identical inputs do not produce identical outputs across different users or sessions.
 //!
 //! ### Salt variants
-//! * `Salt64` - 64 bytes length
+//! * `Salt126` - 126 bytes length
+//! * `Salt64`
 //! * `Salt32`
 //! * `Salt16`
 //! * `Salt12`
 //!
 //! ```
-//! # use bitwark::salt::Salt64;
-//! # use bitwark::Generator;
+//! use bitwark::salt::Salt64;
+//! use bitwark::Generator;
 //!
 //! let salt1 = Salt64::generate().unwrap();
 //! let salt2 = Salt64::generate().unwrap();
@@ -80,19 +112,32 @@
 //! Example with Rotation (Assuming `Expiring` is a structure which utilizes the `Rotation` trait):
 //!
 //! ```
-//! use bitwark::{salt::Salt64, exp::AutoExpiring, Rotation, Generator};
+//! use bitwark::{salt::Salt64, exp::AutoExpiring, keys::ed::EdKey, Rotation, Generator};
+//! use bitwark::payload::SignedPayload;
 //! use chrono::Duration;
 //!
-//! // Generating a salt.
+//! // Make a new salt.
 //! let salt = Salt64::generate().unwrap();
 //!
-//! // Creating an expiring salt with a lifespan of 10 seconds.
+//! // Make a salt that lasts for 10 seconds.
 //! let mut expiring_salt = AutoExpiring::<Salt64>::new(Duration::seconds(10), salt).unwrap();
 //!
-//! // Performing rotation when needed.
+//! // Change the salt if it's too old.
 //! if expiring_salt.is_expired() {
 //!     expiring_salt.rotate().expect("Salt rotation failed.");
 //! }
+//!
+//! // Make a key that lasts for 120 seconds.
+//! let key = AutoExpiring::<EdKey>::generate(Duration::seconds(120)).unwrap();
+//! // Make a payload for signing
+//! let payload = SignedPayload::<String>::new("Hello, world!".to_string());
+//!
+//! // Combine the message and a special code (signature) into one piece.
+//! let signature_bytes = payload.encode_salted(&expiring_salt, &*key).expect("Failed to encode");
+//!
+//! // Separate the message and the signature, checking they're valid.
+//! let decoded_result = SignedPayload::<String>::decode_salted(&signature_bytes, &expiring_salt, &*key);
+//! assert!(decoded_result.is_ok());
 //! ```
 //!
 //! Using salts and rotating them regularly strengthens security by ensuring
@@ -146,11 +191,11 @@ pub trait Generator {
 /// # Example
 ///
 /// ```
+/// # use bitwark::{Generator, Rotation};
 /// # use bitwark::keys::ed::EdKey;
-/// # use bitwark::Rotation;
 /// # use bitwark::exp::AutoExpiring;
-/// # use bitwark::Generator;
 /// # use chrono::Duration;
+///
 /// let key = EdKey::generate().expect("Key generation failed");
 /// let mut expiring_key = AutoExpiring::new(Duration::seconds(10), key).unwrap();
 /// expiring_key.rotate().expect("Key generation failed");
