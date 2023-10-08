@@ -35,7 +35,7 @@ jobs:
       - run: cargo build --verbose
 
   minimal:
-    name: "Rust 1.57.0"
+    name: "Rust 1.60.0"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -45,8 +45,8 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    timeout-minutes: 45
+#    if: github.event_name != 'pull_request'
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@clippy
