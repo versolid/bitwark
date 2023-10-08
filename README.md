@@ -24,6 +24,32 @@ Bitwark implements binary JSON Web Tokens as a bandwidth-efficient alternative t
 
 ## 🛠️ Getting Started
 Embark on a secure journey with Bitwark by leveraging the following functionality in your Rust applications:
+#### Signed Payload decoded as binary (alternative to JWT)
+```rust
+use bitwark::{exp::AutoExpiring, signed_exp::ExpiringSigned, salt::Salt64, keys::{ed::EdKey}};
+use serde::{Serialize, Deserialize};
+use chrono::Duration;
+
+#[derive(Serialize,Deserialize)]
+pub struct Claims {
+    pub permissions: Vec<String>,
+}
+// Generate an EdDSA key pair with a validity period of 10 minutes and a salt with a validity of 5 minutes.
+let exp_key = AutoExpiring::<EdKey>::generate(Duration::minutes(10)).unwrap();
+let exp_salt = AutoExpiring::<Salt64>::generate(Duration::minutes(5)).unwrap();
+
+// Instantiate a token with specified claims.
+let claims = Claims { permissions: vec!["users:read".to_string(), "users:write".to_string()]};
+let token = ExpiringSigned::<Claims>::new(Duration::seconds(120), claims).unwrap();
+
+// Create a binary encoding of the token, signed with the key and salt.
+let signed_token_bytes = token.encode_salted(&exp_salt, &*exp_key).expect("Failed to sign token");
+
+// Decode the token and verify its signature and validity.
+let decoded_token = ExpiringSigned::<Claims>::decode_salted(&signed_token_bytes, &exp_salt, &*exp_key).expect("Failed to decode a token");
+assert_eq!(2, decoded_token.permissions.len(), "Failed to find 2 permissions");
+```
+#### Key Rotation
 ```rust
 use bitwark::{payload::SignedPayload, keys::ed::EdKey, keys::CryptoKey, Generator};
 use chrono::Duration;

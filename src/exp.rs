@@ -90,10 +90,10 @@ impl<K: Generator> Rotation for AutoExpiring<K> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Generator, Rotation};
     use crate::exp::{AutoExpiring, Expiring};
-    use crate::keys::{PublicKey, SecretKey};
     use crate::keys::ed::EdKey;
+    use crate::keys::{PublicKey, SecretKey};
+    use crate::{Generator, Rotation};
 
     #[test]
     #[cfg_attr(miri, ignore)]

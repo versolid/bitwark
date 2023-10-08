@@ -53,7 +53,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
     }
 
     #[inline(always)]
-    pub fn encode_with_salt(&self, salt: &[u8], key: &dyn SecretKey) -> Result<Vec<u8>, BwError> {
+    pub fn encode_salted(&self, salt: &[u8], key: &dyn SecretKey) -> Result<Vec<u8>, BwError> {
         self.signed_payload.encode_salted(salt, key)
     }
 
@@ -159,7 +159,7 @@ mod tests {
         .unwrap();
         let ed_key = EdKey::generate().expect("Must generate a key");
 
-        let encoded = token.encode_with_salt(salt.as_slice(), &ed_key).unwrap();
+        let encoded = token.encode_salted(salt.as_slice(), &ed_key).unwrap();
         let decoded = ExpiringSigned::<String>::decode_salted(&encoded, salt.as_slice(), &ed_key);
 
         assert!(decoded.is_ok());
@@ -178,7 +178,7 @@ mod tests {
         .unwrap();
         let ed_key = EdKey::generate().expect("Must generate a key");
 
-        let encoded = token.encode_with_salt(salt.as_slice(), &ed_key).unwrap();
+        let encoded = token.encode_salted(salt.as_slice(), &ed_key).unwrap();
         let decoded =
             ExpiringSigned::<String>::decode_salted(&encoded, b"Wrong Salt".as_slice(), &ed_key);
 
