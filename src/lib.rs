@@ -14,7 +14,7 @@
 //!
 //! ## Signed Payload decoded as binary (alternative to JWT)
 //! ```
-//! # use bitwark::{exp::AutoExpiring, signed_exp::ExpiringSigned, salt::Salt64, keys::{ed::EdKey}};
+//! # use bitwark::{exp::AutoExpiring, signed_exp::ExpiringSigned, salt::Salt64, keys::{ed::EdDsaKey}};
 //! # use serde::{Serialize, Deserialize};
 //! # use chrono::Duration;
 //! #[derive(Serialize,Deserialize)]
@@ -22,7 +22,7 @@
 //!     pub permissions: Vec<String>,
 //! }
 //! // Generate an EdDSA key pair with a validity period of 10 minutes and a salt with a validity of 5 minutes.
-//! let exp_key = AutoExpiring::<EdKey>::generate(Duration::minutes(10)).unwrap();
+//! let exp_key = AutoExpiring::<EdDsaKey>::generate(Duration::minutes(10)).unwrap();
 //! let exp_salt = AutoExpiring::<Salt64>::generate(Duration::minutes(5)).unwrap();
 //!
 //! // Instantiate a token with specified claims.
@@ -30,29 +30,29 @@
 //! let token = ExpiringSigned::<Claims>::new(Duration::seconds(120), claims).unwrap();
 //!
 //! // Create a binary encoding of the token, signed with the key and salt.
-//! let signed_token_bytes = token.encode_salted(&exp_salt, &*exp_key).expect("Failed to sign token");
+//! let signed_token_bytes = token.encode_and_sign_salted(&exp_salt, &*exp_key).expect("Failed to sign token");
 //!
 //! // Decode the token and verify its signature and validity.
-//! let decoded_token = ExpiringSigned::<Claims>::decode_salted(&signed_token_bytes, &exp_salt, &*exp_key).expect("Failed to decode a token");
+//! let decoded_token = ExpiringSigned::<Claims>::decode_and_verify_salted(&signed_token_bytes, &exp_salt, &*exp_key).expect("Failed to decode a token");
 //! assert_eq!(2, decoded_token.permissions.len(), "Failed to find 2 permissions");
 //! ```
 //! ## Key Generation and Management
 //! Bitwark enables the generation and rotation of cryptographic keys, ensuring persistent security through periodic key renewals.
 //! ```
-//! # use bitwark::keys::ed::EdKey;
+//! # use bitwark::keys::ed::EdDsaKey;
 //! # use bitwark::Generator;
 //! // Generate an EdDSA key pair.
-//! let key = EdKey::generate().unwrap();
+//! let key = EdDsaKey::generate().unwrap();
 //! ```
 //! ## Key Rotation for Enhanced Security
 //! Effortlessly manage and rotate your keys, maintaining a fresh and secure application environment through time-based key expiration and renewals.
 //! ```
-//! # use bitwark::keys::ed::EdKey;
+//! # use bitwark::keys::ed::EdDsaKey;
 //! # use bitwark::Rotation;
 //! # use bitwark::exp::AutoExpiring;
 //! # use bitwark::Generator;
 //! # use chrono::Duration;
-//! let key = EdKey::generate().unwrap();
+//! let key = EdDsaKey::generate().unwrap();
 //! let mut expiring_key = AutoExpiring::new(Duration::seconds(10), key).unwrap();
 //! if expiring_key.is_expired() {
 //!     // update key internally
@@ -63,13 +63,13 @@
 //! ## Payload Creation and Management
 //! Construct, encode, and decode secure payloads, ensuring message integrity through signature verification.
 //! ```
-//! # use bitwark::keys::ed::EdKey;
+//! # use bitwark::keys::ed::EdDsaKey;
 //! # use bitwark::exp::AutoExpiring;
-//! # use bitwark::keys::{PublicKey, SecretKey};
+//! # use bitwark::keys::{BwVerifier, BwSigner};
 //! # use bitwark::payload::SignedPayload;
 //! # use bitwark::Generator;
 //! # use chrono::Duration;
-//! let key = EdKey::generate().unwrap();
+//! let key = EdDsaKey::generate().unwrap();
 //! // Construct a payload.
 //! let payload = SignedPayload::<String>::new("A signed message".to_string());
 //!
@@ -112,7 +112,7 @@
 //! Example with Rotation (Assuming `Expiring` is a structure which utilizes the `Rotation` trait):
 //!
 //! ```
-//! use bitwark::{salt::Salt64, exp::AutoExpiring, keys::ed::EdKey, Rotation, Generator};
+//! use bitwark::{salt::Salt64, exp::AutoExpiring, keys::ed::EdDsaKey, Rotation, Generator};
 //! use bitwark::payload::SignedPayload;
 //! use chrono::Duration;
 //!
@@ -128,7 +128,7 @@
 //! }
 //!
 //! // Make a key that lasts for 120 seconds.
-//! let key = AutoExpiring::<EdKey>::generate(Duration::seconds(120)).unwrap();
+//! let key = AutoExpiring::<EdDsaKey>::generate(Duration::seconds(120)).unwrap();
 //! // Make a payload for signing
 //! let payload = SignedPayload::<String>::new("Hello, world!".to_string());
 //!
@@ -161,8 +161,8 @@ pub mod signed_exp;
 ///
 /// ```
 /// # use bitwark::Generator;
-/// # use bitwark::keys::ed::EdKey;
-/// let generated_key = EdKey::generate().expect("Key generation failed");
+/// # use bitwark::keys::ed::EdDsaKey;
+/// let generated_key = EdDsaKey::generate().expect("Key generation failed");
 /// ```
 ///
 /// Implementing `Generator` trait for your own types enables the structured
@@ -192,11 +192,11 @@ pub trait Generator {
 ///
 /// ```
 /// # use bitwark::{Generator, Rotation};
-/// # use bitwark::keys::ed::EdKey;
+/// # use bitwark::keys::ed::EdDsaKey;
 /// # use bitwark::exp::AutoExpiring;
 /// # use chrono::Duration;
 ///
-/// let key = EdKey::generate().expect("Key generation failed");
+/// let key = EdDsaKey::generate().expect("Key generation failed");
 /// let mut expiring_key = AutoExpiring::new(Duration::seconds(10), key).unwrap();
 /// expiring_key.rotate().expect("Key generation failed");
 /// ```

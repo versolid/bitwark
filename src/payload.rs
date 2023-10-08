@@ -7,7 +7,7 @@ use serde::Serialize;
 use sha3::{Digest, Sha3_384};
 
 use crate::error::BwError;
-use crate::keys::{PublicKey, SecretKey};
+use crate::keys::{BwSigner, BwVerifier};
 
 const MIN_MSG_SIZE: usize = 16;
 const MIN_TOKEN_LENGTH: usize = SIGNATURE_LENGTH + MIN_MSG_SIZE;
@@ -68,13 +68,13 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
     ///
     /// ```rust
     ///
-    /// # use bitwark::{payload::SignedPayload, keys::ed::EdKey, keys::{SecretKey, PublicKey}, Generator};
-    /// let key = EdKey::generate().unwrap();
+    /// # use bitwark::{payload::SignedPayload, keys::ed::EdDsaKey, keys::{BwSigner, BwVerifier}, Generator};
+    /// let key = EdDsaKey::generate().unwrap();
     /// let payload = SignedPayload::<String>::new("Hello, world!".to_string());
     /// let signed_payload = payload.encode(&key).unwrap();
     /// ```
     #[inline]
-    pub fn encode(&self, key: &dyn SecretKey) -> Result<Vec<u8>, BwError> {
+    pub fn encode(&self, key: &dyn BwSigner) -> Result<Vec<u8>, BwError> {
         let payload_bytes = bincode::serialize(&self.payload).expect("Serialization failed");
         let hashed_payload_bytes = hash::<H>(&payload_bytes);
         let mut encoded = key.sign(&hashed_payload_bytes)?;
@@ -99,15 +99,15 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use bitwark::{payload::SignedPayload, keys::ed::EdKey, keys::{PublicKey,SecretKey}, Generator};
-    /// let key = EdKey::generate().unwrap();
+    /// # use bitwark::{payload::SignedPayload, keys::ed::EdDsaKey, keys::{BwVerifier,BwSigner}, Generator};
+    /// let key = EdDsaKey::generate().unwrap();
     /// let payload = SignedPayload::<String>::new("Hello, world!".to_string());
     /// let signed_bytes = payload.encode(&key).unwrap();
     /// let decoded_payload = SignedPayload::<String>::decode(&signed_bytes, &key)
     ///     .unwrap();
     /// assert_eq!(*decoded_payload, *payload);
     /// ```
-    pub fn decode(bytes: &[u8], key: &dyn PublicKey) -> Result<Self, BwError> {
+    pub fn decode(bytes: &[u8], key: &dyn BwVerifier) -> Result<Self, BwError> {
         if bytes.len() < MIN_TOKEN_LENGTH {
             return Err(BwError::InvalidTokenFormat);
         }
@@ -127,7 +127,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
         })
     }
 
-    pub fn encode_salted(&self, salt: &[u8], key: &dyn SecretKey) -> Result<Vec<u8>, BwError> {
+    pub fn encode_salted(&self, salt: &[u8], key: &dyn BwSigner) -> Result<Vec<u8>, BwError> {
         let payload_bytes = bincode::serialize(&self.payload).expect("Serialization failed");
         let mut salted_body = payload_bytes.clone();
         salted_body.extend(salt);
@@ -141,7 +141,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
         Ok(encoded)
     }
 
-    pub fn decode_salted(bytes: &[u8], salt: &[u8], key: &dyn PublicKey) -> Result<Self, BwError> {
+    pub fn decode_salted(bytes: &[u8], salt: &[u8], key: &dyn BwVerifier) -> Result<Self, BwError> {
         if bytes.len() < MIN_TOKEN_LENGTH {
             return Err(BwError::InvalidTokenFormat);
         }
@@ -186,7 +186,7 @@ fn hash<H: Digest>(bytes: &[u8]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use crate::keys::ed::EdKey;
+    use crate::keys::ed::EdDsaKey;
     use crate::salt::Salt64;
     use crate::Generator;
 
@@ -194,14 +194,14 @@ mod tests {
 
     #[test]
     fn test_encode() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let payload = SignedPayload::<String>::new("Hello, world!".to_string());
         let signed_payload = payload.encode(&key).unwrap();
     }
 
     #[test]
     fn test_decoded() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let payload = SignedPayload::<String>::new("Hello, world!".to_string());
         let signed_bytes = payload.encode(&key).unwrap();
         let decoded_payload = SignedPayload::<String>::decode(&signed_bytes, &key).unwrap();
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_encode_salted() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let salt = Salt64::generate().unwrap();
         let payload = SignedPayload::<String>::new("Hello, world!".to_string());
 
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_decoded_salted() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let salt = Salt64::generate().unwrap();
         let payload = SignedPayload::<String>::new("Hello, world!".to_string());
 
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_decoded_salted_with_another_salt_error() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let salt = Salt64::generate().unwrap();
         let payload = SignedPayload::<String>::new("Hello, world!".to_string());
 
@@ -244,13 +244,13 @@ mod tests {
 
     #[test]
     fn test_decoded_salted_with_another_key_error() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let salt = Salt64::generate().unwrap();
         let payload = SignedPayload::<String>::new("Hello, world!".to_string());
 
         let signed_bytes = payload.encode_salted(&salt, &key).unwrap();
 
-        let another_key = EdKey::generate().unwrap();
+        let another_key = EdDsaKey::generate().unwrap();
         let decoded_payload =
             SignedPayload::<String>::decode_salted(&signed_bytes, &salt, &another_key);
         assert!(decoded_payload.is_err());

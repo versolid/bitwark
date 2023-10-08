@@ -3,7 +3,7 @@ use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 
 use crate::error::BwError;
-use crate::keys::{PublicKey, SecretKey};
+use crate::keys::{BwSigner, BwVerifier};
 use crate::Generator;
 
 /// Represents an EdDSA (ed25519) key, which can be used for signing messages and verifying signatures.
@@ -18,25 +18,25 @@ use crate::Generator;
 ///
 /// ```
 /// # use bitwark::Generator;
-/// # use bitwark::keys::SecretKey;
-/// # use bitwark::keys::ed::EdKey;
-/// let key = EdKey::generate().unwrap();
+/// # use bitwark::keys::BwSigner;
+/// # use bitwark::keys::ed::EdDsaKey;
+/// let key = EdDsaKey::generate().unwrap();
 /// let signature_bytes = key.sign(b"Hello world!").unwrap();
 /// assert!(!signature_bytes.is_empty(), "Failed to generate signature");
 /// ```
 #[derive(Serialize, Deserialize)]
-pub struct EdKey {
+pub struct EdDsaKey {
     signing_key: SigningKey,
 }
 
-impl EdKey {
+impl EdDsaKey {
     #[inline]
-    pub fn public_key(&self) -> Result<EdPubKey, BwError> {
-        Ok(EdPubKey::from(self))
+    pub fn public_key(&self) -> Result<EdDsaPubKey, BwError> {
+        Ok(EdDsaPubKey::from(self))
     }
 }
 
-impl Generator for EdKey {
+impl Generator for EdDsaKey {
     /// Generates a new EdDSA key pair.
     ///
     /// The generated key pair consists of a `signing_key` and a corresponding `verifying_key`.
@@ -51,8 +51,8 @@ impl Generator for EdKey {
     ///
     /// ```
     /// # use bitwark::Generator;
-    /// # use bitwark::keys::ed::EdKey;
-    /// let key = EdKey::generate().unwrap();
+    /// # use bitwark::keys::ed::EdDsaKey;
+    /// let key = EdDsaKey::generate().unwrap();
     /// ```
     #[inline]
     fn generate() -> Result<Self, BwError> {
@@ -62,7 +62,7 @@ impl Generator for EdKey {
     }
 }
 
-impl SecretKey for EdKey {
+impl BwSigner for EdDsaKey {
     /// Signs a byte slice using the `signing_key`.
     ///
     /// # Parameters
@@ -78,9 +78,9 @@ impl SecretKey for EdKey {
     ///
     /// ```
     /// # use bitwark::Generator;
-    /// # use bitwark::keys::SecretKey;
-    /// # use bitwark::keys::ed::EdKey;
-    /// let key = EdKey::generate().unwrap();
+    /// # use bitwark::keys::BwSigner;
+    /// # use bitwark::keys::ed::EdDsaKey;
+    /// let key = EdDsaKey::generate().unwrap();
     /// let signature_bytes = key.sign(b"Hello world!").unwrap();
     /// assert!(!signature_bytes.is_empty(), "Failed to generate signature");
     /// ```
@@ -90,7 +90,7 @@ impl SecretKey for EdKey {
     }
 }
 
-impl PublicKey for EdKey {
+impl BwVerifier for EdDsaKey {
     /// Verifies a signature against a message using the `verifying_key`.
     ///
     /// # Parameters
@@ -106,9 +106,9 @@ impl PublicKey for EdKey {
     ///
     /// ```
     /// # use bitwark::Generator;
-    /// # use bitwark::keys::{PublicKey, SecretKey};
-    /// # use bitwark::keys::ed::EdKey;
-    /// let key = EdKey::generate().unwrap();
+    /// # use bitwark::keys::{BwVerifier, BwSigner};
+    /// # use bitwark::keys::ed::EdDsaKey;
+    /// let key = EdDsaKey::generate().unwrap();
     /// let message = b"Hello world!";
     /// let signature_bytes = key.sign(&message[..]).unwrap();
     ///
@@ -131,11 +131,11 @@ pub fn generate_ed_keypair() -> SigningKey {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct EdPubKey {
+pub struct EdDsaPubKey {
     verifying_key: VerifyingKey,
 }
 
-impl PublicKey for EdPubKey {
+impl BwVerifier for EdDsaPubKey {
     fn verify(&self, bytes: &[u8], signature: &[u8]) -> Result<(), BwError> {
         let signature = &Signature::try_from(signature).map_err(|_| BwError::InvalidSignature)?;
         self.verifying_key
@@ -144,8 +144,8 @@ impl PublicKey for EdPubKey {
     }
 }
 
-impl From<&EdKey> for EdPubKey {
-    fn from(secret_key: &EdKey) -> Self {
+impl From<&EdDsaKey> for EdDsaPubKey {
+    fn from(secret_key: &EdDsaKey) -> Self {
         Self {
             verifying_key: secret_key.signing_key.verifying_key(),
         }
@@ -156,26 +156,26 @@ impl From<&EdKey> for EdPubKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::keys::ed::{EdKey, EdPubKey};
-    use crate::keys::{PublicKey, SecretKey};
+    use crate::keys::ed::{EdDsaKey, EdDsaPubKey};
+    use crate::keys::{BwSigner, BwVerifier};
     use crate::Generator;
 
     #[test]
     fn test_generate() {
-        let key = EdKey::generate();
+        let key = EdDsaKey::generate();
         assert!(key.is_ok(), "Failed to generate EdRSA key");
     }
 
     #[test]
     fn test_sign_bytes() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let signature_bytes = key.sign(b"Hello world!").unwrap();
         assert!(!signature_bytes.is_empty(), "Failed to generate signature");
     }
 
     #[test]
     fn test_verify_bytes() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let message = b"Hello world!";
         let signature_bytes = key.sign(&message[..]).unwrap();
 
@@ -187,17 +187,17 @@ mod tests {
     fn test_verify_by_another_key_failed() {
         let message = b"Hello world!";
 
-        let key1 = EdKey::generate().unwrap();
+        let key1 = EdDsaKey::generate().unwrap();
         let signature_bytes = key1.sign(&message[..]).unwrap();
 
-        let key2 = EdKey::generate().unwrap();
+        let key2 = EdDsaKey::generate().unwrap();
         let result = key2.verify(message.as_slice(), &signature_bytes);
         assert!(result.is_err(), "Failed to regenerate properly");
     }
 
     #[test]
     fn test_sign_with_same_signature() {
-        let key = EdKey::generate().unwrap();
+        let key = EdDsaKey::generate().unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
         let signature_bytes_2 = key.sign(&message[..]).unwrap();
@@ -211,10 +211,10 @@ mod tests {
     fn test_generate_key_sign_with_different_signature() {
         let message = b"Hello world!";
 
-        let key1 = EdKey::generate().unwrap();
+        let key1 = EdDsaKey::generate().unwrap();
         let signature_bytes_1 = key1.sign(&message[..]).unwrap();
 
-        let key2 = EdKey::generate().unwrap();
+        let key2 = EdDsaKey::generate().unwrap();
         let signature_bytes_2 = key2.sign(&message[..]).unwrap();
 
         assert_ne!(
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_public_key_verify() {
-        let secret_key = EdKey::generate().unwrap();
+        let secret_key = EdDsaKey::generate().unwrap();
         let public_key = secret_key.public_key().unwrap();
 
         let message = b"Hello world!";
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_serialize_secure_key() {
-        let secret_key = EdKey::generate().unwrap();
+        let secret_key = EdDsaKey::generate().unwrap();
 
         let message = b"Hello world!";
         let signature_bytes = secret_key.sign(&message[..]).unwrap();
@@ -245,7 +245,7 @@ mod tests {
         assert!(result.is_ok(), "Failed to verify signature");
 
         let secret_key_bytes = bincode::serialize(&secret_key).unwrap();
-        let new_secret_key = bincode::deserialize::<EdKey>(&secret_key_bytes).unwrap();
+        let new_secret_key = bincode::deserialize::<EdDsaKey>(&secret_key_bytes).unwrap();
 
         let result = new_secret_key.verify(message.as_slice(), &signature_bytes);
         assert!(result.is_ok(), "Failed to verify signature");
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_serialize_public_key() {
-        let secret_key = EdKey::generate().unwrap();
+        let secret_key = EdDsaKey::generate().unwrap();
 
         let message = b"Hello world!";
         let signature_bytes = secret_key.sign(&message[..]).unwrap();
@@ -261,7 +261,7 @@ mod tests {
         assert!(result.is_ok(), "Failed to verify signature");
 
         let public_key_bytes = bincode::serialize(&secret_key.public_key().unwrap()).unwrap();
-        let public_key = bincode::deserialize::<EdPubKey>(&public_key_bytes).unwrap();
+        let public_key = bincode::deserialize::<EdDsaPubKey>(&public_key_bytes).unwrap();
 
         let result = public_key.verify(message.as_slice(), &signature_bytes);
         assert!(result.is_ok(), "Failed to verify signature");
