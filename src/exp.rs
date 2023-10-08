@@ -29,7 +29,7 @@ impl<K> Expiring<K> {
     }
 
     #[inline(always)]
-    pub fn is_expired(&self) -> bool {
+    pub fn has_expired(&self) -> bool {
         Utc::now().timestamp() > self.exp
     }
 }
@@ -70,7 +70,7 @@ impl<K: Generator> AutoExpiring<K> {
 
     #[inline(always)]
     pub fn is_expired(&self) -> bool {
-        self.expiring.is_expired()
+        self.expiring.has_expired()
     }
 }
 
@@ -91,20 +91,20 @@ impl<K: Generator> Rotation for AutoExpiring<K> {
 #[cfg(test)]
 mod tests {
     use crate::exp::{AutoExpiring, Expiring};
-    use crate::keys::ed::EdKey;
-    use crate::keys::{PublicKey, SecretKey};
+    use crate::keys::ed::EdDsaKey;
+    use crate::keys::{BwSigner, BwVerifier};
     use crate::{Generator, Rotation};
 
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_generate() {
-        let key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60));
+        let key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60));
         assert!(key.is_ok());
     }
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_update_key_verify_failed() {
-        let mut key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
+        let mut key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
         let signature_bytes = key.sign(&message[..]).unwrap();
 
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_sign_with_same_signature() {
-        let key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
+        let key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
         let signature_bytes_2 = key.sign(&message[..]).unwrap();
@@ -129,7 +129,7 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_update_key_sign_with_different_signature() {
-        let mut key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
+        let mut key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60)).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
         key.rotate().expect("Must roll correctly");
@@ -144,23 +144,25 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_expired_expiring() {
-        let key =
-            Expiring::<EdKey>::new(chrono::Duration::seconds(-60), EdKey::generate().unwrap())
-                .unwrap();
-        assert!(key.is_expired(), "AutoExpiring must be expired");
+        let key = Expiring::<EdDsaKey>::new(
+            chrono::Duration::seconds(-60),
+            EdDsaKey::generate().unwrap(),
+        )
+        .unwrap();
+        assert!(key.has_expired(), "AutoExpiring must be expired");
     }
 
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_expired_auth_expiring() {
-        let key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(-60)).unwrap();
+        let key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(-60)).unwrap();
         assert!(key.is_expired(), "AutoExpiring must be expired");
     }
 
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_serialize_expiring_secure_key() {
-        let secret_key = AutoExpiring::<EdKey>::generate(chrono::Duration::seconds(60)).unwrap();
+        let secret_key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60)).unwrap();
 
         let message = b"Hello world!";
         let signature_bytes = secret_key.sign(&message[..]).unwrap();
@@ -169,7 +171,7 @@ mod tests {
 
         let secret_key_bytes = bincode::serialize(&secret_key).unwrap();
         let new_secret_key =
-            bincode::deserialize::<AutoExpiring<EdKey>>(&secret_key_bytes).unwrap();
+            bincode::deserialize::<AutoExpiring<EdDsaKey>>(&secret_key_bytes).unwrap();
         assert!(!new_secret_key.is_expired(), "Key must be not expired");
 
         let result = new_secret_key.verify(message.as_slice(), &signature_bytes);

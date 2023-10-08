@@ -26,40 +26,68 @@ Bitwark implements binary JSON Web Tokens as a bandwidth-efficient alternative t
 Embark on a secure journey with Bitwark by leveraging the following functionality in your Rust applications:
 #### Signed Payload decoded as binary (alternative to JWT)
 ```rust
-use bitwark::{exp::AutoExpiring, signed_exp::ExpiringSigned, salt::Salt64, keys::{ed::EdKey}};
+use bitwark::{
+    exp::AutoExpiring,
+    signed_exp::ExpiringSigned,
+    salt::Salt64,
+    keys::{ed::EdDsaKey},
+};
 use serde::{Serialize, Deserialize};
 use chrono::Duration;
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Claims {
     pub permissions: Vec<String>,
 }
-// Generate an EdDSA key pair with a validity period of 10 minutes and a salt with a validity of 5 minutes.
-let exp_key = AutoExpiring::<EdKey>::generate(Duration::minutes(10)).unwrap();
-let exp_salt = AutoExpiring::<Salt64>::generate(Duration::minutes(5)).unwrap();
+
+// Generate an EdDSA key pair and salt with a validity period
+let exp_key = AutoExpiring::<EdDsaKey>::generate(
+    Duration::minutes(10)
+).unwrap();
+
+let exp_salt = AutoExpiring::<Salt64>::generate(
+    Duration::minutes(5)
+).unwrap();
 
 // Instantiate a token with specified claims.
-let claims = Claims { permissions: vec!["users:read".to_string(), "users:write".to_string()]};
-let token = ExpiringSigned::<Claims>::new(Duration::seconds(120), claims).unwrap();
+let claims = Claims { 
+    permissions: vec![
+        "users:read".to_string(), 
+        "users:write".to_string()
+    ],
+};
 
-// Create a binary encoding of the token, signed with the key and salt.
-let signed_token_bytes = token.encode_salted(&exp_salt, &*exp_key).expect("Failed to sign token");
+let token = ExpiringSigned::<Claims>::new(
+    Duration::seconds(120), claims
+).unwrap();
+
+// Create a binary encoding of the token, signed with key and salt.
+let signed_token_bytes = token.encode_and_sign_salted(
+    &exp_salt, &*exp_key
+).expect("Failed to sign token");
 
 // Decode the token and verify its signature and validity.
-let decoded_token = ExpiringSigned::<Claims>::decode_salted(&signed_token_bytes, &exp_salt, &*exp_key).expect("Failed to decode a token");
-assert_eq!(2, decoded_token.permissions.len(), "Failed to find 2 permissions");
+let decoded_token = ExpiringSigned::<Claims>::decode_and_verify_salted(
+    &signed_token_bytes, &exp_salt, &*exp_key
+).expect("Failed to decode a token");
+
+assert_eq!(
+    2, 
+    decoded_token.permissions.len(), 
+    "Failed to find 2 permissions"
+);
 ```
 #### Key Rotation
 ```rust
-use bitwark::{payload::SignedPayload, keys::ed::EdKey, keys::CryptoKey, Generator};
+use bitwark::{payload::SignedPayload, keys::ed::EdDsaKey, keys::CryptoKey, Generator};
 use chrono::Duration;
 
 // creating a key
-let key = EdKey::generate()?;
+let key = EdDsaKey::generate()?;
 
 // Rotating key
-let mut expiring_key = Expiring<EdKey>::new(Duration::seconds(10), key);
-if expiring_key.is_expired() {
+let mut expiring_key = Expiring<EdDsaKey>::new(Duration::seconds(10), key);
+if expiring_key.has_expired() {
     expiring_key.roll()?;
 }
 
@@ -67,16 +95,21 @@ if expiring_key.is_expired() {
 let payload = SignedPayload::<String>::new("A signed message".to_string());
 
 // Encode the payload with signature based on the expiring key
-let signed_payload_bytes = payload.encode(&expiring_key)?;
+let signed_payload_bytes = payload.encode_and_sign(&expiring_key)?;
 
 // Decode the signed payload with verifying signature with payload's integrity
-let decoded_payload = SignedPayload::<String>::decode(&signed_payload_bytes, &expiring_key)?;
+let decoded_payload = SignedPayload::<String>::decode_and_verify(&signed_payload_bytes, &expiring_key)?;
 assert_eq!(*decoded_payload, *payload);
 ```
 
 #### Salt Example
 ```rust
-use bitwark::{salt::Salt64, exp::AutoExpiring, Rotation, Generator};
+use bitwark::{
+    salt::Salt64, 
+    exp::AutoExpiring, 
+    key::ed::EdDsaKey, 
+    Rotation, Generator
+};
 use bitwark::payload::SignedPayload;
 use chrono::Duration;
 
@@ -84,23 +117,38 @@ use chrono::Duration;
 let salt = Salt64::generate().unwrap();
 
 // Make a salt that lasts for 10 seconds.
-let mut expiring_salt = AutoExpiring::<Salt64>::new(Duration::seconds(10), salt).unwrap();
+let mut expiring_salt = AutoExpiring::<Salt64>::new(
+    Duration::seconds(10), salt
+).unwrap();
 
 // Change the salt if it's too old.
-if expiring_salt.is_expired() {
-    expiring_salt.rotate().expect("Salt rotation failed.");
+if expiring_salt.has_expired() {
+    expiring_salt
+        .rotate()
+        .expect("Salt rotation failed.");
 }
 
 // Make a key that lasts for 120 seconds.
-let key = AutoExpiring::<EdKey>::generate(Duration::seconds(120)).unwrap();
+let key = AutoExpiring::<EdDsaKey>::generate(
+    Duration::seconds(120)
+).unwrap();
+
 // Make a payload for signing
-let payload = SignedPayload::<String>::new("Hello, world!".to_string());
+let payload = SignedPayload::<String>::new(
+    "Hello, world!".to_string()
+);
 
-// Combine the message and a special code (signature) into one piece.
-let signature_bytes = payload.encode_salted(&expiring_salt, &*key).expect("Failed to encode");
+// Combine message and signature into one piece.
+let signature_bytes = payload.encode_and_sign_salted(
+    &expiring_salt, &*key
+).expect("Failed to encode");
 
-// Separate the message and the signature, checking they're valid.
-let decoded_result = SignedPayload::<String>::decode_salted(&signature_bytes, &expiring_salt, &*key);
+// Separate message and signature, verifying validity.
+let decoded_result = 
+    SignedPayload::<String>::decode_and_verify_salted(
+        &signature_bytes, &expiring_salt, &*key
+    );
+
 assert!(decoded_result.is_ok());
 ```
 
