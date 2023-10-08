@@ -89,6 +89,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn encode_decode_test() {
         let token = ExpiringSigned::<String>::new(
             chrono::Duration::seconds(60),
@@ -106,6 +107,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn decode_incorrect_token_test() {
         let ed_key = EdKey::generate().expect("Must generate a key");
         let decoded = ExpiringSigned::<String>::decode(b"Something", &ed_key);
@@ -114,6 +116,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn decode_invalid_signature_token_test() {
         let token = ExpiringSigned::<String>::new(
             chrono::Duration::seconds(60),
@@ -132,6 +135,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn decode_expired_token_test() {
         let token =
             ExpiringSigned::<String>::new(Duration::seconds(-60), "This is payload".to_string())
@@ -145,6 +149,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn encode_decode_with_salt_test() {
         let salt = b"Secret Salt";
         let token = ExpiringSigned::<String>::new(
@@ -163,6 +168,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn encode_decode_with_incorrect_salt_test() {
         let salt = b"Secret Salt";
         let token = ExpiringSigned::<String>::new(

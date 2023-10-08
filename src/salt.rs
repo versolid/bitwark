@@ -67,6 +67,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn generate_expiring_salt() {
         let mut salt1 = AutoExpiring::<Salt64>::generate(chrono::Duration::seconds(60)).unwrap();
         let bytes = salt1.clone();
