@@ -48,6 +48,36 @@ let decoded_payload = SignedPayload::<String>::decode(&signed_payload_bytes, &ex
 assert_eq!(*decoded_payload, *payload);
 ```
 
+#### Salt Example
+```rust
+use bitwark::{salt::Salt64, exp::AutoExpiring, Rotation, Generator};
+use bitwark::payload::SignedPayload;
+use chrono::Duration;
+
+// Make a new salt.
+let salt = Salt64::generate().unwrap();
+
+// Make a salt that lasts for 10 seconds.
+let mut expiring_salt = AutoExpiring::<Salt64>::new(Duration::seconds(10), salt).unwrap();
+
+// Change the salt if it's too old.
+if expiring_salt.is_expired() {
+    expiring_salt.rotate().expect("Salt rotation failed.");
+}
+
+// Make a key that lasts for 120 seconds.
+let key = AutoExpiring::<EdKey>::generate(Duration::seconds(120)).unwrap();
+// Make a payload for signing
+let payload = SignedPayload::<String>::new("Hello, world!".to_string());
+
+// Combine the message and a special code (signature) into one piece.
+let signature_bytes = payload.encode_salted(&expiring_salt, &*key).expect("Failed to encode");
+
+// Separate the message and the signature, checking they're valid.
+let decoded_result = SignedPayload::<String>::decode_salted(&signature_bytes, &expiring_salt, &*key);
+assert!(decoded_result.is_ok());
+```
+
 ## 💡 Motivation
 In an era where data security is paramount, Bitwark aims to offer developers a toolbox for crafting secure digital interactions without compromising on performance or ease of use. Lightweight binary JWT tokens minimize bandwidth usage, while key rotation and salt functionalities amplify security, ensuring your applications are not just secure, but also efficient and reliable.
 
