@@ -119,27 +119,30 @@ mod tests {
     fn encode_decode_with_exp_pub_key() {
         let key = EdDsaKey::generate().unwrap();
 
-        let exp_salt = Expiring::<Salt64>::new(
-            chrono::Duration::seconds(60),
-            Salt64::generate().unwrap(),
-        ).unwrap();
-        
+        let exp_salt =
+            Expiring::<Salt64>::new(chrono::Duration::seconds(60), Salt64::generate().unwrap())
+                .unwrap();
+
         // Instantiate a token with specified claims.
-        let token = ExpiringSigned::<String>::new(Duration::seconds(120), "Hello".to_string()).unwrap();
-        
+        let token =
+            ExpiringSigned::<String>::new(Duration::seconds(120), "Hello".to_string()).unwrap();
+
         // Create a binary encoding of the token, signed with the key and salt.
-        let signed_token_bytes = token.encode_and_sign_salted(&exp_salt, &key)
+        let signed_token_bytes = token
+            .encode_and_sign_salted(&exp_salt, &key)
             .expect("Failed to sign token");
-        
-        let exp_pub_key = Expiring::<EdDsaPubKey>::new(
-            chrono::Duration::seconds(60),
-            key.public_key().unwrap(),
-        ).unwrap();
-        
+
+        let exp_pub_key =
+            Expiring::<EdDsaPubKey>::new(chrono::Duration::seconds(60), key.public_key().unwrap())
+                .unwrap();
+
         // Decode the token and verify its signature and validity.
         let decoded_token = ExpiringSigned::<String>::decode_and_verify_salted(
-            &signed_token_bytes, &exp_salt, &*exp_pub_key
-        ).expect("Failed to decode a token");
+            &signed_token_bytes,
+            &exp_salt,
+            &*exp_pub_key,
+        )
+        .expect("Failed to decode a token");
     }
 
     #[test]
