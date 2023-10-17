@@ -34,7 +34,7 @@ impl<K> Expiring<K> {
     }
 }
 
-impl<K: Generator> Deref for Expiring<K> {
+impl<K> Deref for Expiring<K> {
     type Target = K;
 
     fn deref(&self) -> &Self::Target {
