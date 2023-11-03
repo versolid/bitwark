@@ -81,10 +81,10 @@
 //! let payload = SignedPayload::<String>::new("A signed message".to_string());
 //!
 //! // Encode the payload.
-//! let signed_payload_bytes = payload.encode(&key).unwrap();
+//! let signed_payload_bytes = payload.encode_and_sign(&key).unwrap();
 //!
 //! // Decode, verifying the signature.
-//! let decoded_payload = SignedPayload::<String>::decode(&signed_payload_bytes, &key).unwrap();
+//! let decoded_payload = SignedPayload::<String>::decode_and_verify(&signed_payload_bytes, &key).unwrap();
 //! assert_eq!(*decoded_payload, *payload);
 //! ```
 //!
@@ -140,10 +140,10 @@
 //! let payload = SignedPayload::<String>::new("Hello, world!".to_string());
 //!
 //! // Combine the message and a special code (signature) into one piece.
-//! let signature_bytes = payload.encode_salted(&expiring_salt, &*key).expect("Failed to encode");
+//! let signature_bytes = payload.encode_and_sign_salted(&expiring_salt, &*key).expect("Failed to encode");
 //!
 //! // Separate the message and the signature, checking they're valid.
-//! let decoded_result = SignedPayload::<String>::decode_salted(&signature_bytes, &expiring_salt, &*key);
+//! let decoded_result = SignedPayload::<String>::decode_and_verify_salted(&signature_bytes, &expiring_salt, &*key);
 //! assert!(decoded_result.is_ok());
 //! ```
 //!
@@ -151,7 +151,7 @@
 //! that even repeated data or credentials produce different hashes or ciphertexts
 //! across different instances or sessions.
 //!
-use error::BwError;
+pub use error::BwError;
 
 pub mod error;
 pub mod exp;

@@ -7,7 +7,7 @@ use sha3::{Digest, Sha3_384};
 
 use crate::error::BwError;
 use crate::keys::{BwSigner, BwVerifier};
-use crate::payload::SignedPayload;
+use crate::payload::{SignedPayload, SignedPayloadUnverified};
 
 #[derive(Serialize, Deserialize)]
 struct ExpiringBlock<T> {
@@ -36,14 +36,21 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
         })
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn encode_and_sign(&self, key: &dyn BwSigner) -> Result<Vec<u8>, BwError> {
-        self.signed_payload.encode(key)
+        self.signed_payload.encode_and_sign(key)
     }
 
-    #[inline(always)]
+    #[inline]
+    pub fn decode(bytes: &[u8]) -> Result<ExpiringSignedUnverified<T, H>, BwError> {
+        let signed_payload_unverified = SignedPayload::<ExpiringBlock<T>, H>::decode(bytes)?;
+        Ok(ExpiringSignedUnverified {
+            signed_payload_unverified,
+        })
+    }
+
     pub fn decode_and_verify(bytes: &[u8], key: &dyn BwVerifier) -> Result<Self, BwError> {
-        let signed_payload = SignedPayload::<ExpiringBlock<T>, H>::decode(bytes, key)?;
+        let signed_payload = SignedPayload::<ExpiringBlock<T>, H>::decode_and_verify(bytes, key)?;
         // Verify expiration
         if Utc::now().timestamp() > signed_payload.exp {
             return Err(BwError::Expired);
@@ -52,13 +59,13 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
         Ok(ExpiringSigned { signed_payload })
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn encode_and_sign_salted(
         &self,
         salt: &[u8],
         key: &dyn BwSigner,
     ) -> Result<Vec<u8>, BwError> {
-        self.signed_payload.encode_salted(salt, key)
+        self.signed_payload.encode_and_sign_salted(salt, key)
     }
 
     pub fn decode_and_verify_salted(
@@ -66,7 +73,8 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
         salt: &[u8],
         key: &dyn BwVerifier,
     ) -> Result<Self, BwError> {
-        let signed_payload = SignedPayload::<ExpiringBlock<T>, H>::decode_salted(bytes, salt, key)?;
+        let signed_payload =
+            SignedPayload::<ExpiringBlock<T>, H>::decode_and_verify_salted(bytes, salt, key)?;
 
         if Utc::now().timestamp() > signed_payload.exp {
             return Err(BwError::Expired);
@@ -81,6 +89,44 @@ impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringSigned<T, H> 
 
     fn deref(&self) -> &Self::Target {
         &(*self.signed_payload).payload
+    }
+}
+
+pub struct ExpiringSignedUnverified<T: Serialize + DeserializeOwned, H: Digest = Sha3_384> {
+    signed_payload_unverified: SignedPayloadUnverified<ExpiringBlock<T>, H>,
+}
+
+impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSignedUnverified<T, H> {
+    #[inline(always)]
+    pub fn verify(self, key: &dyn BwVerifier) -> Result<ExpiringSigned<T, H>, BwError> {
+        let signed_payload = self.signed_payload_unverified.verify(key)?;
+        // Verify expiration
+        if Utc::now().timestamp() > signed_payload.exp {
+            return Err(BwError::Expired);
+        }
+
+        Ok(ExpiringSigned { signed_payload })
+    }
+
+    pub fn verify_salted(
+        self,
+        salt: &[u8],
+        key: &dyn BwVerifier,
+    ) -> Result<ExpiringSigned<T, H>, BwError> {
+        let signed_payload = self.signed_payload_unverified.verify_salted(salt, key)?;
+
+        if Utc::now().timestamp() > signed_payload.exp {
+            return Err(BwError::Expired);
+        }
+
+        Ok(ExpiringSigned { signed_payload })
+    }
+}
+impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringSignedUnverified<T, H> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &(*self.signed_payload_unverified).payload
     }
 }
 
