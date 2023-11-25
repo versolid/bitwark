@@ -27,6 +27,18 @@ macro_rules! impl_salt {
                 &self.0
             }
         }
+
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        impl From<$name> for Vec<u8> {
+            fn from(value: $name) -> Self {
+                value.0
+            }
+        }
     };
 }
 

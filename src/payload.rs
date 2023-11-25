@@ -31,7 +31,7 @@ const MIN_TOKEN_LENGTH: usize = SIGNATURE_LENGTH + MIN_MSG_SIZE;
 /// # use bitwark::payload::SignedPayload;
 /// let payload = SignedPayload::<String>::new("Hello, world!".to_string());
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct SignedPayload<T: Serialize + DeserializeOwned, H: Digest = Sha3_384> {
     payload: T,
     digest: PhantomData<H>,
@@ -232,6 +232,11 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
             digest: PhantomData::<H>,
         })
     }
+
+    #[inline(always)]
+    pub fn into_payload(self) -> T {
+        self.payload
+    }
 }
 
 impl<T: Serialize + DeserializeOwned, H: Digest> Deref for SignedPayload<T, H> {
@@ -295,6 +300,11 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayloadUnverified<T, H> {
             digest: PhantomData::<H>,
         })
     }
+
+    #[inline(always)]
+    pub fn into_payload(self) -> T {
+        self.payload
+    }
 }
 
 impl<T: Serialize + DeserializeOwned, H: Digest> Deref for SignedPayloadUnverified<T, H> {
@@ -303,6 +313,18 @@ impl<T: Serialize + DeserializeOwned, H: Digest> Deref for SignedPayloadUnverifi
     #[inline]
     fn deref(&self) -> &<Self as Deref>::Target {
         &self.payload
+    }
+}
+
+impl<T: Serialize + DeserializeOwned, H: Digest> PartialEq for SignedPayloadUnverified<T, H> {
+    fn eq(&self, other: &Self) -> bool {
+        self.bytes == other.bytes
+    }
+}
+
+impl<K: Serialize + DeserializeOwned + PartialEq, H: Digest> PartialEq for SignedPayload<K, H> {
+    fn eq(&self, other: &Self) -> bool {
+        self.payload == other.payload
     }
 }
 
@@ -412,5 +434,14 @@ mod tests {
         let decoded_payload =
             SignedPayload::<String>::decode_and_verify_salted(&signed_bytes, &salt, &another_key);
         assert!(decoded_payload.is_err());
+    }
+
+    #[test]
+    fn into_payload() {
+        let payload = "This is payload".to_string();
+        let signed = SignedPayload::<String>::new(payload.clone());
+
+        let unwrapped_payload = signed.into_payload();
+        assert_eq!(unwrapped_payload, payload);
     }
 }
