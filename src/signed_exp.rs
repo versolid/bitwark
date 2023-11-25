@@ -82,6 +82,11 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
 
         Ok(ExpiringSigned { signed_payload })
     }
+
+    #[inline(always)]
+    pub fn into_payload(self) -> T {
+        self.signed_payload.into_payload().payload
+    }
 }
 
 impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringSigned<T, H> {
@@ -199,6 +204,19 @@ mod tests {
 
         assert!(matches!(decoded, Err(BwError::InvalidTokenFormat)));
     }
+    #[test]
+    #[cfg_attr(miri, ignore)]
+    fn decode_correct_token_test() {
+        let salt = Salt64::generate().unwrap();
+        let ed_key = EdDsaKey::generate().expect("Must generate a key");
+        let object =
+            ExpiringSigned::<String>::new(chrono::Duration::seconds(100), "Something".to_string())
+                .unwrap();
+        let encoded_bytes = object.encode_and_sign_salted(&salt, &ed_key).unwrap();
+        let decoded = ExpiringSigned::<String>::decode(&encoded_bytes).unwrap();
+
+        assert_eq!(*decoded, *object);
+    }
 
     #[test]
     #[cfg_attr(miri, ignore)]
@@ -276,5 +294,15 @@ mod tests {
         );
 
         assert!(matches!(decoded, Err(BwError::InvalidSignature)));
+    }
+
+    #[test]
+    fn into_payload() {
+        let payload = "This is payload".to_string();
+        let token =
+            ExpiringSigned::<String>::new(chrono::Duration::seconds(60), payload.clone()).unwrap();
+
+        let unwrapped_payload = token.into_payload();
+        assert_eq!(unwrapped_payload, payload);
     }
 }

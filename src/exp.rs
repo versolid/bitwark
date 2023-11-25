@@ -86,6 +86,20 @@ impl<K: Generator> Rotation for AutoExpiring<K> {
     }
 }
 
+impl<K: PartialEq> PartialEq for Expiring<K> {
+    fn eq(&self, other: &Self) -> bool {
+        self.exp == other.exp && self.init_exp == other.init_exp && self.object.eq(&other.object)
+    }
+}
+
+impl<K: PartialEq + Generator> PartialEq for AutoExpiring<K> {
+    fn eq(&self, other: &Self) -> bool {
+        self.expiring.exp == other.expiring.exp
+            && self.expiring.init_exp == other.expiring.init_exp
+            && self.expiring.object.eq(&other.expiring.object)
+    }
+}
+
 // Tests --------------------------------------------------------------------------------------
 
 #[cfg(test)]
