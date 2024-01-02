@@ -90,6 +90,6 @@ mod tests {
         let mut salt1 = AutoExpiring::<Salt64>::generate(chrono::Duration::seconds(60)).unwrap();
         let bytes = salt1.clone();
         salt1.rotate().unwrap();
-        assert_ne!(&bytes, &*salt1, "Failed to compare");
+        assert_ne!(&*bytes, &*salt1, "Failed to compare");
     }
 }

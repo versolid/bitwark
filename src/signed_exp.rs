@@ -9,13 +9,22 @@ use crate::error::BwError;
 use crate::keys::{BwSigner, BwVerifier};
 use crate::payload::{SignedPayload, SignedPayloadUnverified};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 struct ExpiringBlock<T> {
     exp: i64,
     payload: T,
 }
 
-pub struct ExpiringSigned<T: Serialize + DeserializeOwned + Clone, H: Digest = Sha3_384> {
+impl<T: Clone> Clone for ExpiringBlock<T> {
+    fn clone(&self) -> Self {
+        Self {
+            exp: self.exp,
+            payload: self.payload.clone(),
+        }
+    }
+}
+
+pub struct ExpiringSigned<T: Serialize + DeserializeOwned, H: Digest = Sha3_384> {
     signed_payload: SignedPayload<ExpiringBlock<T>, H>,
 }
 
@@ -89,11 +98,19 @@ impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSigned<T, H> {
     }
 }
 
-impl<T: Serialize + DeserializeOwned + Clone, H: Digest> Deref for ExpiringSigned<T, H> {
+impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringSigned<T, H> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
         &(*self.signed_payload).payload
+    }
+}
+
+impl<T: Serialize + DeserializeOwned + Clone> Clone for ExpiringSigned<T> {
+    fn clone(&self) -> Self {
+        Self {
+            signed_payload: self.signed_payload.clone(),
+        }
     }
 }
 
