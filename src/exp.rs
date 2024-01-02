@@ -42,6 +42,16 @@ impl<K> Deref for Expiring<K> {
     }
 }
 
+impl<K: Clone> Clone for Expiring<K> {
+    fn clone(&self) -> Self {
+        Self {
+            init_exp: self.init_exp,
+            exp: self.exp,
+            object: self.object.clone(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct AutoExpiring<K: Generator> {
     expiring: Expiring<K>,
@@ -52,6 +62,14 @@ impl<K: Generator> Deref for AutoExpiring<K> {
 
     fn deref(&self) -> &Self::Target {
         &self.expiring.object
+    }
+}
+
+impl<K: Clone + Generator> Clone for AutoExpiring<K> {
+    fn clone(&self) -> Self {
+        Self {
+            expiring: self.expiring.clone(),
+        }
     }
 }
 
