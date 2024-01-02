@@ -39,6 +39,12 @@ macro_rules! impl_salt {
                 value.0
             }
         }
+
+        impl Clone for $name {
+            fn clone(&self) -> Self {
+                $name(self.0.clone())
+            }
+        }
     };
 }
 
@@ -84,6 +90,6 @@ mod tests {
         let mut salt1 = AutoExpiring::<Salt64>::generate(chrono::Duration::seconds(60)).unwrap();
         let bytes = salt1.clone();
         salt1.rotate().unwrap();
-        assert_ne!(&bytes, &**salt1, "Failed to compare");
+        assert_ne!(&bytes, &*salt1, "Failed to compare");
     }
 }
