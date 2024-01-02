@@ -32,12 +32,12 @@ const MIN_TOKEN_LENGTH: usize = SIGNATURE_LENGTH + MIN_MSG_SIZE;
 /// let payload = SignedPayload::<String>::new("Hello, world!".to_string());
 /// ```
 #[derive(Debug)]
-pub struct SignedPayload<T: Serialize + DeserializeOwned, H: Digest = Sha3_384> {
+pub struct SignedPayload<T: Serialize + DeserializeOwned + Clone, H: Digest = Sha3_384> {
     payload: T,
     digest: PhantomData<H>,
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
+impl<T: Serialize + DeserializeOwned + Clone, H: Digest> SignedPayload<T, H> {
     /// Creates a new `SignedPayload` with the provided payload.
     ///
     /// # Parameters
@@ -239,7 +239,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayload<T, H> {
     }
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> Deref for SignedPayload<T, H> {
+impl<T: Serialize + DeserializeOwned + Clone, H: Digest> Deref for SignedPayload<T, H> {
     type Target = T;
 
     #[inline]
@@ -254,7 +254,7 @@ pub struct SignedPayloadUnverified<T: Serialize + DeserializeOwned, H: Digest = 
     digest: PhantomData<H>,
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> SignedPayloadUnverified<T, H> {
+impl<T: Serialize + DeserializeOwned + Clone, H: Digest> SignedPayloadUnverified<T, H> {
     pub fn verify(self, key: &dyn BwVerifier) -> Result<SignedPayload<T, H>, BwError> {
         if self.bytes.len() < MIN_TOKEN_LENGTH {
             return Err(BwError::InvalidTokenFormat);
@@ -322,7 +322,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> PartialEq for SignedPayloadUnve
     }
 }
 
-impl<K: Serialize + DeserializeOwned + PartialEq, H: Digest> PartialEq for SignedPayload<K, H> {
+impl<K: Serialize + DeserializeOwned + PartialEq + Clone, H: Digest> PartialEq for SignedPayload<K, H> {
     fn eq(&self, other: &Self) -> bool {
         self.payload == other.payload
     }

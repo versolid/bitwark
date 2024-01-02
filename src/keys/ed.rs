@@ -24,7 +24,7 @@ use crate::Generator;
 /// let signature_bytes = key.sign(b"Hello world!").unwrap();
 /// assert!(!signature_bytes.is_empty(), "Failed to generate signature");
 /// ```
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EdDsaKey {
     signing_key: SigningKey,
 }
@@ -130,7 +130,7 @@ pub fn generate_ed_keypair() -> SigningKey {
     SigningKey::generate(&mut csprng)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EdDsaPubKey {
     verifying_key: VerifyingKey,
 }

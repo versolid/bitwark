@@ -9,17 +9,17 @@ use crate::error::BwError;
 use crate::keys::{BwSigner, BwVerifier};
 use crate::payload::{SignedPayload, SignedPayloadUnverified};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct ExpiringBlock<T> {
     exp: i64,
     payload: T,
 }
 
-pub struct ExpiringSigned<T: Serialize + DeserializeOwned, H: Digest = Sha3_384> {
+pub struct ExpiringSigned<T: Serialize + DeserializeOwned + Clone, H: Digest = Sha3_384> {
     signed_payload: SignedPayload<ExpiringBlock<T>, H>,
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
+impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSigned<T, H> {
     #[inline]
     pub fn new(exp: chrono::Duration, payload: T) -> Result<Self, BwError> {
         let expiration = Utc::now()
@@ -89,7 +89,7 @@ impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSigned<T, H> {
     }
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> Deref for ExpiringSigned<T, H> {
+impl<T: Serialize + DeserializeOwned + Clone, H: Digest> Deref for ExpiringSigned<T, H> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -101,7 +101,7 @@ pub struct ExpiringSignedUnverified<T: Serialize + DeserializeOwned, H: Digest =
     signed_payload_unverified: SignedPayloadUnverified<ExpiringBlock<T>, H>,
 }
 
-impl<T: Serialize + DeserializeOwned, H: Digest> ExpiringSignedUnverified<T, H> {
+impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSignedUnverified<T, H> {
     #[inline(always)]
     pub fn verify(self, key: &dyn BwVerifier) -> Result<ExpiringSigned<T, H>, BwError> {
         let signed_payload = self.signed_payload_unverified.verify(key)?;
@@ -188,7 +188,7 @@ mod tests {
                 .unwrap();
 
         // Decode the token and verify its signature and validity.
-        let decoded_token = ExpiringSigned::<String>::decode_and_verify_salted(
+        let _decoded_token = ExpiringSigned::<String>::decode_and_verify_salted(
             &signed_token_bytes,
             &exp_salt,
             &*exp_pub_key,

@@ -17,7 +17,7 @@
 //! # use bitwark::{exp::AutoExpiring, signed_exp::ExpiringSigned, salt::Salt64, keys::{ed::EdDsaKey}};
 //! # use serde::{Serialize, Deserialize};
 //! # use chrono::Duration;
-//! #[derive(Serialize,Deserialize)]
+//! #[derive(Serialize,Deserialize, Clone)]
 //! pub struct Claims {
 //!     pub permissions: Vec<String>,
 //! }
