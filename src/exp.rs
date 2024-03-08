@@ -86,7 +86,7 @@ impl<K: Generator> AutoExpiring<K> {
         })
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_expired(&self) -> bool {
         self.expiring.has_expired()
     }
@@ -96,8 +96,10 @@ impl<K: Generator> Rotation for AutoExpiring<K> {
     #[inline]
     fn rotate(&mut self) -> Result<(), BwError> {
         self.expiring.object = K::generate()?;
+        let duration = chrono::Duration::try_milliseconds(self.expiring.init_exp)
+            .ok_or(BwError::IncorrectTimestamp)?;
         self.expiring.exp = Utc::now()
-            .checked_add_signed(chrono::Duration::milliseconds(self.expiring.init_exp))
+            .checked_add_signed(duration)
             .ok_or(BwError::IncorrectTimestamp)?
             .timestamp();
         Ok(())
@@ -130,13 +132,14 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_generate() {
-        let key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60));
+        let key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::try_seconds(60).unwrap());
         assert!(key.is_ok());
     }
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_update_key_verify_failed() {
-        let mut key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60)).unwrap();
+        let mut key =
+            AutoExpiring::<EdDsaKey>::generate(chrono::Duration::try_seconds(60).unwrap()).unwrap();
         let message = b"Hello world!";
         let signature_bytes = key.sign(&message[..]).unwrap();
 
@@ -148,7 +151,8 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_sign_with_same_signature() {
-        let key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60)).unwrap();
+        let key =
+            AutoExpiring::<EdDsaKey>::generate(chrono::Duration::try_seconds(60).unwrap()).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
         let signature_bytes_2 = key.sign(&message[..]).unwrap();
@@ -161,7 +165,8 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_update_key_sign_with_different_signature() {
-        let mut key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60)).unwrap();
+        let mut key =
+            AutoExpiring::<EdDsaKey>::generate(chrono::Duration::try_seconds(60).unwrap()).unwrap();
         let message = b"Hello world!";
         let signature_bytes_1 = key.sign(&message[..]).unwrap();
         key.rotate().expect("Must roll correctly");
@@ -177,7 +182,7 @@ mod tests {
     #[cfg_attr(miri, ignore)]
     fn test_expired_expiring() {
         let key = Expiring::<EdDsaKey>::new(
-            chrono::Duration::seconds(-60),
+            chrono::Duration::try_seconds(-60).unwrap(),
             EdDsaKey::generate().unwrap(),
         )
         .unwrap();
@@ -187,14 +192,16 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_expired_auth_expiring() {
-        let key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(-60)).unwrap();
+        let key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::try_seconds(-60).unwrap())
+            .unwrap();
         assert!(key.is_expired(), "AutoExpiring must be expired");
     }
 
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_serialize_expiring_secure_key() {
-        let secret_key = AutoExpiring::<EdDsaKey>::generate(chrono::Duration::seconds(60)).unwrap();
+        let secret_key =
+            AutoExpiring::<EdDsaKey>::generate(chrono::Duration::try_seconds(60).unwrap()).unwrap();
 
         let message = b"Hello world!";
         let signature_bytes = secret_key.sign(&message[..]).unwrap();
