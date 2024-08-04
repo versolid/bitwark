@@ -8,7 +8,7 @@ use crate::{error::BwError, Generator};
 macro_rules! impl_salt {
     ($name:ident, $length:expr) => {
         #[derive(Serialize, Deserialize, Debug)]
-        pub struct $name(Vec<u8>);
+        pub struct $name(#[serde(with = "serde_bytes")] Vec<u8>);
 
         impl Generator for $name {
             fn generate() -> Result<Self, BwError>
@@ -22,7 +22,6 @@ macro_rules! impl_salt {
         impl Deref for $name {
             type Target = Vec<u8>;
 
-            #[inline]
             fn deref(&self) -> &Self::Target {
                 &self.0
             }

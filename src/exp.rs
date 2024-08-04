@@ -15,7 +15,6 @@ pub struct Expiring<K> {
 }
 
 impl<K> Expiring<K> {
-    #[inline]
     pub fn new(exp: chrono::Duration, object: K) -> Result<Self, BwError> {
         let expiration = Utc::now()
             .checked_add_signed(exp)
@@ -28,7 +27,7 @@ impl<K> Expiring<K> {
         })
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn has_expired(&self) -> bool {
         Utc::now().timestamp() > self.exp
     }

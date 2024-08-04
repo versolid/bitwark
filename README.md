@@ -167,4 +167,4 @@ Contributors are the backbone of open-source projects, and Bitwark warmly welcom
 * 💬 Community Interaction: Join discussions and provide feedback to help make Bitwark better.
 
 ## 📜 License
-Bitwark is open-source software, freely available under the MIT License.
+Bitwark is open-source software, freely available under the MIT License or BSD-3-Clause.

@@ -29,7 +29,6 @@ pub struct ExpiringSigned<T: Serialize + DeserializeOwned, H: Digest = Sha3_384>
 }
 
 impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSigned<T, H> {
-    #[inline]
     pub fn new(exp: chrono::Duration, payload: T) -> Result<Self, BwError> {
         let expiration = Utc::now()
             .checked_add_signed(exp)
@@ -46,7 +45,7 @@ impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSigned<T, H> {
     }
 
     #[inline]
-    pub fn encode_and_sign(&self, key: &dyn BwSigner) -> Result<Vec<u8>, BwError> {
+    pub fn encode_and_sign(&self, key: &(impl BwSigner + ?Sized)) -> Result<Vec<u8>, BwError> {
         self.signed_payload.encode_and_sign(key)
     }
 
@@ -58,7 +57,11 @@ impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSigned<T, H> {
         })
     }
 
-    pub fn decode_and_verify(bytes: &[u8], key: &dyn BwVerifier) -> Result<Self, BwError> {
+    #[inline]
+    pub fn decode_and_verify(
+        bytes: &[u8],
+        key: &(impl BwVerifier + ?Sized),
+    ) -> Result<Self, BwError> {
         let signed_payload = SignedPayload::<ExpiringBlock<T>, H>::decode_and_verify(bytes, key)?;
         // Verify expiration
         if Utc::now().timestamp() > signed_payload.exp {
@@ -72,15 +75,16 @@ impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSigned<T, H> {
     pub fn encode_and_sign_salted(
         &self,
         salt: &[u8],
-        key: &dyn BwSigner,
+        key: &(impl BwSigner + ?Sized),
     ) -> Result<Vec<u8>, BwError> {
         self.signed_payload.encode_and_sign_salted(salt, key)
     }
 
+    #[inline]
     pub fn decode_and_verify_salted(
         bytes: &[u8],
         salt: &[u8],
-        key: &dyn BwVerifier,
+        key: &(impl BwVerifier + ?Sized),
     ) -> Result<Self, BwError> {
         let signed_payload =
             SignedPayload::<ExpiringBlock<T>, H>::decode_and_verify_salted(bytes, salt, key)?;
@@ -92,7 +96,7 @@ impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSigned<T, H> {
         Ok(ExpiringSigned { signed_payload })
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn into_payload(self) -> T {
         self.signed_payload.into_payload().payload
     }
@@ -119,8 +123,8 @@ pub struct ExpiringSignedUnverified<T: Serialize + DeserializeOwned, H: Digest =
 }
 
 impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSignedUnverified<T, H> {
-    #[inline(always)]
-    pub fn verify(self, key: &dyn BwVerifier) -> Result<ExpiringSigned<T, H>, BwError> {
+    #[inline]
+    pub fn verify(self, key: &(impl BwVerifier + ?Sized)) -> Result<ExpiringSigned<T, H>, BwError> {
         let signed_payload = self.signed_payload_unverified.verify(key)?;
         // Verify expiration
         if Utc::now().timestamp() > signed_payload.exp {
@@ -133,7 +137,7 @@ impl<T: Serialize + DeserializeOwned + Clone, H: Digest> ExpiringSignedUnverifie
     pub fn verify_salted(
         self,
         salt: &[u8],
-        key: &dyn BwVerifier,
+        key: &(impl BwVerifier + ?Sized),
     ) -> Result<ExpiringSigned<T, H>, BwError> {
         let signed_payload = self.signed_payload_unverified.verify_salted(salt, key)?;
 
